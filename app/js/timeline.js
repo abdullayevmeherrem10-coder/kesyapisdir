@@ -176,21 +176,10 @@ const Timeline = (() => {
     const lane = document.createElement('div');
     lane.className = 'add-lane';
     lane.style.height = ADD_ROW_H + 'px';
-    lane.innerHTML = `<div class="add-lane-inner">
-      <span class="add-lane-label">Yeni trek:</span>
-      <button class="add-chip" data-add="video" title="Yeni video / şəkil treki">${ICON('film')}<span>Video</span></button>
-      <button class="add-chip" data-add="audio" title="Yeni audio treki">${ICON('music')}<span>Səs</span></button>
-      <button class="add-chip" data-add="text" title="Yeni mətn treki">${ICON('type')}<span>Mətn</span></button>
-      <button class="add-chip" data-add="mic" title="Mikrofondan səs yaz">${ICON('mic')}<span>Mikrofon</span></button>
-    </div>`;
+    lane.title = 'Sağ klik: yeni trek əlavə et';
     // Bu sırada çərçivə seçimi və klip menyusu işləməsin
     lane.addEventListener('pointerdown', e => e.stopPropagation());
     lane.addEventListener('contextmenu', e => { e.preventDefault(); e.stopPropagation(); addTrackMenu(e.clientX, e.clientY); });
-    lane.addEventListener('click', e => {
-      const b = e.target.closest('.add-chip');
-      if (!b) return;
-      if (b.dataset.add === 'mic') Recorder.open('mic'); else App.addTrack(b.dataset.add);
-    });
     tracksEl.appendChild(lane);
   }
 
@@ -257,7 +246,15 @@ const Timeline = (() => {
   function onClipContext(e) {
     if (suppressCtx) { suppressCtx = false; e.preventDefault(); return; }
     const clipEl = e.target.closest('.clip');
-    if (!clipEl) return;
+    if (!clipEl) {
+      // Boş trek sahəsi: trekin öz menyusu (sil, adını dəyiş, köçür...)
+      const laneEl = e.target.closest('.track-lane');
+      const track = laneEl && State.findTrack(laneEl.dataset.trackId);
+      if (!track) return;
+      e.preventDefault();
+      trackMenu(track, e.clientX, e.clientY);
+      return;
+    }
     e.preventDefault();
     const id = clipEl.dataset.clipId;
     if (!State.selection.includes(id)) State.select([id]);
@@ -454,7 +451,11 @@ const Timeline = (() => {
     if (!hd) return;
     e.preventDefault();
     const track = State.findTrack(hd.dataset.trackId);
-    App.contextMenu(e.clientX, e.clientY, [
+    if (!track) return;
+    trackMenu(track, e.clientX, e.clientY);
+  }
+  function trackMenu(track, x, y) {
+    App.contextMenu(x, y, [
       { label: 'Adını dəyiş', action: () => App.prompt('Trekin adı', track.name, v => State.mutate(() => { track.name = v; })) },
       { label: track.muted ? 'Səsi aç' : 'Səssiz et', action: () => State.mutate(() => { track.muted = !track.muted; }) },
       { label: track.hidden ? 'Göstər' : 'Gizlət', action: () => State.mutate(() => { track.hidden = !track.hidden; }) },
