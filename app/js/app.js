@@ -196,7 +196,6 @@ const App = (() => {
     $('time-display').innerHTML = `${fmtMs(State.playhead)} / ${fmtMs(dur)}`;
     $('seekbar-fill').style.width = (dur > 0 ? State.playhead / dur * 100 : 0) + '%';
     $('status-length').textContent = `Layihə uzunluğu: ${Media.fmtTime(dur)}`;
-    $('preview-logo').classList.toggle('hidden', dur > 0);
   }
   function updateTitle() {
     const p = State.project; if (!p) return;
