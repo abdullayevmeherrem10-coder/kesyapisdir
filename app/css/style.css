@@ -317,8 +317,8 @@ textarea.text-content { width: 100%; min-height: 80px; resize: vertical; }
 .clip-video .clip-body { bottom: 40%; }
 .clip-audio .clip-body { top: 0; background-image: repeating-linear-gradient(90deg, rgba(255,255,255,.14) 0 2px, transparent 2px 5px); background-size: auto 60%; background-position: 0 50%; }
 .clip-text .clip-body { background: rgba(0,0,0,.15); }
-.clip-audio .clip-label { left: 4px; right: auto; max-width: calc(100% - 8px); background: rgba(0,0,0,.45); border-radius: 3px; padding: 0 5px; z-index: 1; }
-.clip-label { position: absolute; left: 7px; top: 2px; right: 7px; font-size: 11px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; text-shadow: 0 1px 2px rgba(0,0,0,.8); pointer-events: none; }
+.clip-audio .clip-label { left: 12px; right: auto; max-width: calc(100% - 24px); background: rgba(0,0,0,.45); border-radius: 3px; padding: 0 5px; z-index: 1; }
+.clip-label { position: absolute; left: 13px; top: 2px; right: 13px; font-size: 11px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; text-shadow: 0 1px 2px rgba(0,0,0,.8); pointer-events: none; }
 .clip-wave { position: absolute; left: 0; right: 0; bottom: 0; width: 100%; pointer-events: none; }
 .clip-video .clip-wave { height: 40%; background: rgba(0,0,0,.3); border-top: 1px solid rgba(255,255,255,.15); }
 .clip-audio .clip-wave { top: 0; height: 100%; }
@@ -327,9 +327,11 @@ textarea.text-content { width: 100%; min-height: 80px; resize: vertical; }
 .clip-speed { position: absolute; right: 6px; top: 2px; font-size: 9.5px; background: rgba(0,0,0,.55); padding: 0 5px; border-radius: 3px; pointer-events: none; }
 .clip-transition { position: absolute; right: 0; top: 0; bottom: 0; background: rgba(42,108,255,.45); border-left: 1px solid rgba(255,255,255,.5); display: grid; place-items: center; color: #fff; pointer-events: none; }
 .clip-transition .ic { width: 12px; height: 12px; }
-.clip-handle { position: absolute; top: 0; bottom: 0; width: 8px; cursor: ew-resize; z-index: 2; }
+.clip-handle { position: absolute; top: 0; bottom: 0; width: 10px; cursor: ew-resize; z-index: 3; background: rgba(255,255,255,.92); opacity: 0; transition: opacity .1s; }
 .clip-handle.left { left: 0; } .clip-handle.right { right: 0; }
-.clip.selected .clip-handle::after { content: ""; position: absolute; top: 30%; bottom: 30%; width: 2px; left: 3px; background: #fff; border-radius: 1px; }
+.clip-handle::after { content: ""; position: absolute; top: 50%; left: 50%; width: 2px; height: 14px; transform: translate(-50%, -50%); background: #222; border-radius: 1px; }
+.clip:hover .clip-handle { opacity: .55; }
+.clip.selected .clip-handle, .clip-handle:hover { opacity: 1; }
 
 .marquee { position: absolute; border: 1px solid var(--accent); background: rgba(42,108,255,.18); z-index: 7; pointer-events: none; border-radius: 2px; }
 .playhead { position: absolute; top: 0; bottom: 0; width: 1px; background: var(--playhead); z-index: 6; pointer-events: none; }
