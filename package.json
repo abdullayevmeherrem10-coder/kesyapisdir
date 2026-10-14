@@ -1,0 +1,18 @@
+{
+  "name": "kesyapisdir",
+  "productName": "Kəsyapışdır",
+  "version": "1.0.0",
+  "description": "Kəsyapışdır — Azərbaycan dilində video redaktoru (CapCut tərzində)",
+  "main": "main.js",
+  "author": "Kəsyapışdır",
+  "license": "MIT",
+  "scripts": {
+    "start": "electron .",
+    "web": "node server.js",
+    "smoke": "electron . --smoke",
+    "build": "electron-builder --win portable --config.productName=Kesyapisdir --config.win.icon=build/icon.ico"
+  },
+  "devDependencies": {
+    "electron": "^33.0.0"
+  }
+}

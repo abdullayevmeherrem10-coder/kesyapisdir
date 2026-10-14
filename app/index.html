@@ -1,0 +1,431 @@
+<!DOCTYPE html>
+<html lang="az">
+<head>
+<meta charset="UTF-8">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self' blob: data: mediastream:; style-src 'self' 'unsafe-inline'; img-src 'self' blob: data:; media-src 'self' blob: data: mediastream:; script-src 'self'; font-src 'self' data:">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Kəsyapışdır</title>
+<link rel="icon" href="assets/logo-64.png">
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+<svg xmlns="http://www.w3.org/2000/svg" style="display:none">
+  <symbol id="i-plus" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></symbol>
+  <symbol id="i-music" viewBox="0 0 24 24"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></symbol>
+  <symbol id="i-type" viewBox="0 0 24 24"><path d="M4 7V4h16v3M9 20h6M12 4v16"/></symbol>
+  <symbol id="i-transition" viewBox="0 0 24 24"><path d="M3 6l6 6-6 6M21 6l-6 6 6 6M9 12h6"/></symbol>
+  <symbol id="i-sparkle" viewBox="0 0 24 24"><path d="M12 3l1.9 5.1L19 10l-5.1 1.9L12 17l-1.9-5.1L5 10l5.1-1.9zM19 16l.8 2.2L22 19l-2.2.8L19 22l-.8-2.2L16 19l2.2-.8z"/></symbol>
+  <symbol id="i-smile" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M8 14s1.5 2 4 2 4-2 4-2M9 9h.01M15 9h.01"/></symbol>
+  <symbol id="i-grid" viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></symbol>
+  <symbol id="i-sliders" viewBox="0 0 24 24"><path d="M4 21v-7M4 10V3M12 21v-9M12 8V3M20 21v-5M20 12V3M1 14h6M9 8h6M17 16h6"/></symbol>
+  <symbol id="i-undo" viewBox="0 0 24 24"><path d="M3 7v6h6"/><path d="M21 17a9 9 0 0 0-15-6.7L3 13"/></symbol>
+  <symbol id="i-redo" viewBox="0 0 24 24"><path d="M21 7v6h-6"/><path d="M3 17a9 9 0 0 1 15-6.7L21 13"/></symbol>
+  <symbol id="i-trash" viewBox="0 0 24 24"><path d="M3 6h18M8 6V4h8v2M19 6l-1 14H6L5 6M10 11v6M14 11v6"/></symbol>
+  <symbol id="i-cursor" viewBox="0 0 24 24"><path d="M4 3l7 17 2.5-6.5L20 11 4 3z"/></symbol>
+  <symbol id="i-scissors" viewBox="0 0 24 24"><circle cx="6" cy="6" r="3"/><circle cx="6" cy="18" r="3"/><path d="M20 4L8.12 15.88M14.47 14.48L20 20M8.12 8.12L12 12"/></symbol>
+  <symbol id="i-split" viewBox="0 0 24 24"><path d="M12 3v18M4 7h5v10H4zM15 7h5v10h-5z"/></symbol>
+  <symbol id="i-play" viewBox="0 0 24 24"><path d="M6 4l14 8-14 8z" fill="currentColor" stroke="none"/></symbol>
+  <symbol id="i-pause" viewBox="0 0 24 24"><rect x="6" y="4" width="4" height="16" fill="currentColor" stroke="none"/><rect x="14" y="4" width="4" height="16" fill="currentColor" stroke="none"/></symbol>
+  <symbol id="i-skip-back" viewBox="0 0 24 24"><path d="M19 20L9 12l10-8v16z" fill="currentColor" stroke="none"/><path d="M5 19V5"/></symbol>
+  <symbol id="i-skip-fwd" viewBox="0 0 24 24"><path d="M5 4l10 8-10 8V4z" fill="currentColor" stroke="none"/><path d="M19 5v14"/></symbol>
+  <symbol id="i-step-back" viewBox="0 0 24 24"><path d="M11 19l-7-7 7-7M20 19l-7-7 7-7"/></symbol>
+  <symbol id="i-step-fwd" viewBox="0 0 24 24"><path d="M13 5l7 7-7 7M4 5l7 7-7 7"/></symbol>
+  <symbol id="i-volume" viewBox="0 0 24 24"><path d="M11 5L6 9H2v6h4l5 4V5zM15.5 8.5a5 5 0 0 1 0 7M19 5a10 10 0 0 1 0 14"/></symbol>
+  <symbol id="i-mute" viewBox="0 0 24 24"><path d="M11 5L6 9H2v6h4l5 4V5zM23 9l-6 6M17 9l6 6"/></symbol>
+  <symbol id="i-maximize" viewBox="0 0 24 24"><path d="M8 3H5a2 2 0 0 0-2 2v3M21 8V5a2 2 0 0 0-2-2h-3M3 16v3a2 2 0 0 0 2 2h3M16 21h3a2 2 0 0 0 2-2v-3"/></symbol>
+  <symbol id="i-settings" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></symbol>
+  <symbol id="i-eye" viewBox="0 0 24 24"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></symbol>
+  <symbol id="i-eye-off" viewBox="0 0 24 24"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24M1 1l22 22"/></symbol>
+  <symbol id="i-link" viewBox="0 0 24 24"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></symbol>
+  <symbol id="i-x" viewBox="0 0 24 24"><path d="M18 6L6 18M6 6l12 12"/></symbol>
+  <symbol id="i-minus" viewBox="0 0 24 24"><path d="M5 12h14"/></symbol>
+  <symbol id="i-magnet" viewBox="0 0 24 24"><path d="M5 3h5v9a2 2 0 0 0 4 0V3h5v9a7 7 0 0 1-14 0V3zM5 8h5M14 8h5"/></symbol>
+  <symbol id="i-copy" viewBox="0 0 24 24"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></symbol>
+  <symbol id="i-paste" viewBox="0 0 24 24"><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/><rect x="8" y="2" width="8" height="4" rx="1"/></symbol>
+  <symbol id="i-duplicate" viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M12 8v8M8 12h8"/></symbol>
+  <symbol id="i-folder" viewBox="0 0 24 24"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></symbol>
+  <symbol id="i-save" viewBox="0 0 24 24"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2zM17 21v-8H7v8M7 3v5h8"/></symbol>
+  <symbol id="i-export" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M17 8l-5-5-5 5M12 3v12"/></symbol>
+  <symbol id="i-chevron" viewBox="0 0 24 24"><path d="M6 9l6 6 6-6"/></symbol>
+  <symbol id="i-film" viewBox="0 0 24 24"><rect x="2" y="2" width="20" height="20" rx="2"/><path d="M7 2v20M17 2v20M2 12h20M2 7h5M2 17h5M17 17h5M17 7h5"/></symbol>
+  <symbol id="i-image" viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="M21 15l-5-5L5 21"/></symbol>
+  <symbol id="i-mic" viewBox="0 0 24 24"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3zM19 10v2a7 7 0 0 1-14 0v-2M12 19v4M8 23h8"/></symbol>
+  <symbol id="i-camera" viewBox="0 0 24 24"><path d="M23 7l-7 5 7 5V7z"/><rect x="1" y="5" width="15" height="14" rx="2"/></symbol>
+  <symbol id="i-monitor" viewBox="0 0 24 24"><rect x="2" y="3" width="20" height="14" rx="2"/><path d="M8 21h8M12 17v4"/></symbol>
+  <symbol id="i-rotate" viewBox="0 0 24 24"><path d="M23 4v6h-6"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></symbol>
+  <symbol id="i-flip" viewBox="0 0 24 24"><path d="M12 3v18M8 7l-5 5 5 5M16 7l5 5-5 5"/></symbol>
+  <symbol id="i-record" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="3.5" fill="currentColor" stroke="none"/></symbol>
+  <symbol id="i-info" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4M12 8h.01"/></symbol>
+  <symbol id="i-help" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3M12 17h.01"/></symbol>
+  <symbol id="i-check" viewBox="0 0 24 24"><path d="M20 6L9 17l-5-5"/></symbol>
+  <symbol id="i-search" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/></symbol>
+  <symbol id="i-speed" viewBox="0 0 24 24"><path d="M12 2a10 10 0 0 0-7.07 17.07M12 2a10 10 0 0 1 7.07 17.07M12 12l4-4"/><circle cx="12" cy="12" r="1.5"/></symbol>
+  <symbol id="i-fit" viewBox="0 0 24 24"><path d="M3 9V5a2 2 0 0 1 2-2h4M15 3h4a2 2 0 0 1 2 2v4M21 15v4a2 2 0 0 1-2 2h-4M9 21H5a2 2 0 0 1-2-2v-4M8 12h8"/></symbol>
+  <symbol id="i-clock" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></symbol>
+  <symbol id="i-edit" viewBox="0 0 24 24"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.12 2.12 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></symbol>
+  <symbol id="i-crop" viewBox="0 0 24 24"><path d="M6 2v14a2 2 0 0 0 2 2h14M2 6h14a2 2 0 0 1 2 2v14"/></symbol>
+  <symbol id="i-al-left" viewBox="0 0 24 24"><path d="M4 3v18M8 7h12v4H8zM8 13h8v4H8z"/></symbol>
+  <symbol id="i-al-hcenter" viewBox="0 0 24 24"><path d="M12 3v18M5 7h14v4H5zM8 13h8v4H8z"/></symbol>
+  <symbol id="i-al-right" viewBox="0 0 24 24"><path d="M20 3v18M4 7h12v4H4zM8 13h8v4H8z"/></symbol>
+  <symbol id="i-al-top" viewBox="0 0 24 24"><path d="M3 4h18M7 8h4v12H7zM13 8h4v8h-4z"/></symbol>
+  <symbol id="i-al-vcenter" viewBox="0 0 24 24"><path d="M3 12h18M7 5h4v14H7zM13 8h4v8h-4z"/></symbol>
+  <symbol id="i-al-bottom" viewBox="0 0 24 24"><path d="M3 20h18M7 4h4v12H7zM13 8h4v8h-4z"/></symbol>
+  <symbol id="i-logo" viewBox="0 0 24 24"><circle cx="6" cy="6" r="3"/><circle cx="6" cy="18" r="3"/><path d="M20 4L8.12 15.88M14.47 14.48L20 20M8.12 8.12L12 12"/></symbol>
+</svg>
+
+<!-- ============ MENYU ZOLAĞI ============ -->
+<header class="menubar" id="menubar">
+  <span class="app-badge"><img src="assets/logo-64.png" alt=""></span>
+  <button class="menu-item" data-menu="file">Fayl</button>
+  <button class="menu-item" data-menu="edit">Redaktə</button>
+  <button class="menu-item" data-menu="play">Oynat</button>
+  <button class="menu-item" data-menu="settings">Parametrlər</button>
+  <button class="menu-item" data-menu="export">İxrac</button>
+  <button class="menu-item" data-menu="help">Kömək</button>
+  <span class="spacer"></span>
+  <span class="menubar-title" id="window-title">Kəsyapışdır – Yeni layihə</span>
+</header>
+<div class="dropdown hidden" id="dropdown"></div>
+
+<!-- ============ İŞ SAHƏSİ ============ -->
+<main class="workspace">
+  <nav class="rail" id="rail">
+    <button class="rail-item active" data-page="import"><svg class="ic"><use href="#i-plus"/></svg><span>İdxal</span></button>
+    <button class="rail-item" data-page="audio"><svg class="ic"><use href="#i-music"/></svg><span>Səs</span></button>
+    <button class="rail-item" data-page="text"><svg class="ic"><use href="#i-type"/></svg><span>Mətn</span></button>
+    <button class="rail-item" data-page="transitions"><svg class="ic"><use href="#i-transition"/></svg><span>Keçidlər</span></button>
+    <button class="rail-item" data-page="effects"><svg class="ic"><use href="#i-sparkle"/></svg><span>Effektlər</span></button>
+    <button class="rail-item" data-page="elements"><svg class="ic"><use href="#i-smile"/></svg><span>Elementlər</span></button>
+    <button class="rail-item" data-page="tools"><svg class="ic"><use href="#i-grid"/></svg><span>Alətlər</span></button>
+    <button class="rail-item" data-page="props"><svg class="ic"><use href="#i-sliders"/></svg><span>Xüsusiyyətlər</span></button>
+  </nav>
+
+  <section class="content">
+    <!-- İdxal -->
+    <div class="page active" id="page-import">
+      <div class="subtabs">
+        <button class="subtab active" data-sub="import-all">İdxal</button>
+        <button class="subtab" data-sub="import-files">Layihə faylları</button>
+        <button class="subtab" data-sub="import-bg">Arxa fonlar</button>
+      </div>
+      <div class="subpage active" id="sub-import-all">
+        <div class="drop-zone" id="drop-zone">
+          <div class="drop-inner" id="drop-hint">
+            <p>Faylları və ya qovluqları bura sürükləyin</p>
+            <button class="btn primary" id="btn-import">Fayl əlavə et</button>
+          </div>
+          <div class="media-grid" id="media-grid"></div>
+        </div>
+        <div class="record-row">
+          <button class="record-card" data-rec="camera"><svg class="ic"><use href="#i-camera"/></svg><span>Video<br>yaz</span></button>
+          <button class="record-card" data-rec="screen"><svg class="ic"><use href="#i-monitor"/></svg><span>Ekran<br>yazısı</span></button>
+          <button class="record-card" data-rec="mic"><svg class="ic"><use href="#i-mic"/></svg><span>Səs<br>yaz</span></button>
+        </div>
+      </div>
+      <div class="subpage" id="sub-import-files">
+        <div class="browser">
+          <aside class="browser-side">
+            <button class="cat active" data-cat="all">Hamısı <b id="cnt-all">0</b></button>
+            <button class="cat" data-cat="video">Video <b id="cnt-video">0</b></button>
+            <button class="cat" data-cat="image">Şəkil <b id="cnt-image">0</b></button>
+            <button class="cat" data-cat="audio">Səs <b id="cnt-audio">0</b></button>
+          </aside>
+          <div class="browser-main">
+            <div class="browser-bar">
+              <label class="search"><svg class="ic"><use href="#i-search"/></svg><input id="files-search" placeholder="Tap"></label>
+              <span class="spacer"></span>
+              <button class="btn" id="files-add">Əlavə et</button>
+            </div>
+            <h4 class="group-title" id="files-title">Hamısı</h4>
+            <div class="media-grid" id="files-grid"></div>
+          </div>
+        </div>
+      </div>
+      <div class="subpage" id="sub-import-bg">
+        <p class="hint">Arxa fonu zaman xəttinə əlavə etmək üçün üzərinə klikləyin.</p>
+        <div class="bg-grid" id="bg-grid"></div>
+      </div>
+    </div>
+
+    <!-- Səs -->
+    <div class="page" id="page-audio">
+      <div class="subtabs"><button class="subtab active">Səs faylları</button></div>
+      <div class="page-actions">
+        <button class="btn primary" id="btn-import-audio">Səs faylı əlavə et</button>
+        <button class="btn" id="btn-rec-mic"><svg class="ic"><use href="#i-mic"/></svg> Mikrofondan yaz</button>
+      </div>
+      <div class="media-grid list" id="audio-grid"></div>
+      <p class="hint" id="audio-empty">Hələ səs faylı yoxdur.</p>
+    </div>
+
+    <!-- Mətn -->
+    <div class="page" id="page-text">
+      <div class="subtabs"><button class="subtab active">Başlıqlar</button></div>
+      <div class="page-actions"><button class="btn primary" id="btn-add-text">Mətn əlavə et</button></div>
+      <div class="preset-list" id="text-presets"></div>
+    </div>
+
+    <!-- Keçidlər -->
+    <div class="page" id="page-transitions">
+      <div class="subtabs"><button class="subtab active">Keçidlər</button></div>
+      <div class="browser">
+        <aside class="browser-side" id="transition-cats"></aside>
+        <div class="browser-main">
+          <p class="hint">Keçid seçilmiş klipdən növbəti klipə tətbiq olunur. Müddətini "Xüsusiyyətlər" bölməsində dəyişə bilərsiniz.</p>
+          <div id="transition-groups"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Effektlər -->
+    <div class="page" id="page-effects">
+      <div class="subtabs"><button class="subtab active">Filtrlər</button></div>
+      <p class="hint">Filtr seçilmiş video və ya şəkil klipinə tətbiq olunur.</p>
+      <div class="filter-grid" id="filter-presets"></div>
+    </div>
+
+    <!-- Elementlər -->
+    <div class="page" id="page-elements">
+      <div class="subtabs"><button class="subtab active">Stikerlər</button></div>
+      <p class="hint">Stikeri zaman xəttinə əlavə etmək üçün üzərinə klikləyin.</p>
+      <div class="sticker-grid" id="sticker-grid"></div>
+    </div>
+
+    <!-- Alətlər -->
+    <div class="page" id="page-tools">
+      <div class="subtabs"><button class="subtab active">Alətlər</button></div>
+      <div class="tool-list" id="tool-list"></div>
+    </div>
+
+    <!-- Xüsusiyyətlər -->
+    <div class="page" id="page-props">
+      <div id="inspector"></div>
+    </div>
+  </section>
+
+  <div class="splitter v" id="split-v" title="Paneli böyütmək/kiçiltmək üçün sürükləyin, sıfırlamaq üçün iki dəfə klikləyin"></div>
+  <section class="preview">
+    <div class="canvas-wrap" id="canvas-wrap">
+      <canvas id="preview" width="1920" height="1080"></canvas>
+      <div class="preview-logo" id="preview-logo"><img src="assets/logo-256.png" alt=""><div>Kəsyapışdır<small>Video redaktoru</small></div></div>
+    </div>
+    <div class="seekbar" id="seekbar"><div class="seekbar-fill" id="seekbar-fill"></div></div>
+    <div class="transport">
+      <span class="timecode" id="time-display">00:00<small>.000</small> / 00:00<small>.000</small></span>
+      <span class="spacer"></span>
+      <button class="ibtn" id="btn-to-start" title="Başa (Home)"><svg class="ic"><use href="#i-skip-back"/></svg></button>
+      <button class="ibtn" id="btn-step-back" title="Bir kadr geri (←)"><svg class="ic"><use href="#i-step-back"/></svg></button>
+      <button class="ibtn big" id="btn-play" title="Oynat / Dayandır (Boşluq)"><svg class="ic"><use href="#i-play"/></svg></button>
+      <button class="ibtn" id="btn-step-fwd" title="Bir kadr irəli (→)"><svg class="ic"><use href="#i-step-fwd"/></svg></button>
+      <button class="ibtn" id="btn-to-end" title="Sona (End)"><svg class="ic"><use href="#i-skip-fwd"/></svg></button>
+      <span class="spacer"></span>
+      <select id="ratio-select" class="ratio" title="Layihə nisbəti">
+        <option value="16:9">16:9</option><option value="9:16">9:16</option><option value="1:1">1:1</option>
+        <option value="4:3">4:3</option><option value="21:9">21:9</option>
+      </select>
+      <button class="ibtn" id="btn-monitor-mute" title="Önizləmə səsi"><svg class="ic"><use href="#i-volume"/></svg></button>
+      <button class="ibtn" id="btn-fullscreen" title="Tam ekran"><svg class="ic"><use href="#i-maximize"/></svg></button>
+      <button class="ibtn" id="btn-project-settings" title="Layihə parametrləri"><svg class="ic"><use href="#i-settings"/></svg></button>
+    </div>
+  </section>
+</main>
+
+<div class="splitter h" id="split-h" title="Zaman xəttini böyütmək/kiçiltmək üçün sürükləyin, sıfırlamaq üçün iki dəfə klikləyin"></div>
+<!-- ============ ZAMAN XƏTTİ ============ -->
+<section class="timeline-area">
+  <div class="timeline-toolbar">
+    <button class="tbtn" id="tl-record" title="Mikrofondan yaz"><svg class="ic rec"><use href="#i-record"/></svg></button>
+    <span class="sep"></span>
+    <button class="tbtn" id="tl-undo" title="Geri al (Ctrl+Z)"><svg class="ic"><use href="#i-undo"/></svg></button>
+    <button class="tbtn" id="tl-redo" title="İrəli al (Ctrl+Y)"><svg class="ic"><use href="#i-redo"/></svg></button>
+    <button class="tbtn" id="tl-delete" title="Sil (Delete)"><svg class="ic"><use href="#i-trash"/></svg></button>
+    <span class="sep"></span>
+    <span class="tool-group">
+      <button class="tbtn on" id="tl-select" title="Seçim aləti"><svg class="ic"><use href="#i-cursor"/></svg></button>
+      <button class="tbtn on" id="tl-snap" title="Maqnit (yapışma)"><svg class="ic"><use href="#i-magnet"/></svg></button>
+    </span>
+    <button class="tbtn" id="tl-split" title="Böl (Ctrl+B)"><svg class="ic"><use href="#i-split"/></svg></button>
+    <button class="tbtn" id="tl-cut" title="Kəs (Ctrl+X)"><svg class="ic"><use href="#i-scissors"/></svg></button>
+    <button class="tbtn" id="tl-copy" title="Kopyala (Ctrl+C)"><svg class="ic"><use href="#i-copy"/></svg></button>
+    <button class="tbtn" id="tl-paste" title="Yapışdır (Ctrl+V)"><svg class="ic"><use href="#i-paste"/></svg></button>
+    <button class="tbtn" id="tl-duplicate" title="Dublikat (Ctrl+D)"><svg class="ic"><use href="#i-duplicate"/></svg></button>
+    <span class="sep"></span>
+    <button class="tbtn" id="tl-trim-left" title="Başlıqdan solunu kəs (Q)"><svg class="ic flip-x"><use href="#i-step-fwd"/></svg></button>
+    <button class="tbtn" id="tl-trim-right" title="Başlıqdan sağını kəs (W)"><svg class="ic"><use href="#i-step-fwd"/></svg></button>
+    <button class="tbtn" id="tl-add-track" title="Trek əlavə et"><svg class="ic"><use href="#i-plus"/></svg></button>
+    <span class="spacer"></span>
+    <button class="tbtn" id="tl-fit" title="Sığdır (F)"><svg class="ic"><use href="#i-fit"/></svg></button>
+    <span class="sep"></span>
+    <button class="tbtn" id="tl-zoom-out" title="Kiçilt"><svg class="ic"><use href="#i-minus"/></svg></button>
+    <input type="range" id="tl-zoom" min="8" max="400" value="80" title="Miqyas (Ctrl + təkər)">
+    <button class="tbtn" id="tl-zoom-in" title="Böyüt"><svg class="ic"><use href="#i-plus"/></svg></button>
+    <button class="btn primary export-btn" id="btn-export"><span>İxrac et</span><i class="vsep"></i><svg class="ic"><use href="#i-chevron"/></svg></button>
+  </div>
+  <div class="timeline">
+    <div class="track-headers-col">
+      <div class="ruler-spacer"><button class="cover-btn" id="btn-cover" title="Videoya qapaq (üz şəkli) qoy"><svg class="ic"><use href="#i-edit"/></svg><span>Qapaq</span></button></div>
+      <div id="track-headers" class="track-headers"></div>
+    </div>
+    <div class="timeline-scroll" id="timeline-scroll">
+      <div class="timeline-content" id="timeline-content">
+        <div class="ruler" id="ruler"></div>
+        <div class="tracks" id="tracks"></div>
+        <div class="playhead" id="playhead"><div class="playhead-head"></div></div>
+      </div>
+    </div>
+    <div class="meter" id="meter">
+      <canvas id="meter-canvas" width="22" height="320"></canvas>
+      <div class="meter-scale"><span>0</span><span>-5</span><span>-10</span><span>-15</span><span>-20</span><span>-30</span><span>-40</span><span>-50</span><span>-60</span></div>
+      <div class="meter-lr"><span>L</span><span>R</span></div>
+    </div>
+  </div>
+</section>
+<footer class="statusbar">
+  <span id="status-length">Layihə uzunluğu: 00:00</span>
+  <span class="spacer"></span>
+  <span id="status-info"></span>
+</footer>
+
+<!-- ============ DİALOQLAR ============ -->
+<div id="dlg-export" class="modal hidden">
+  <div class="modal-card">
+    <h2>İxrac et</h2>
+    <div class="form-grid">
+      <label>Fayl adı <input id="exp-name" value="video"></label>
+      <label>Ölçü
+        <select id="exp-res">
+          <option value="1">Layihə ölçüsü (tam)</option>
+          <option value="0.6667">Orta (2/3)</option>
+          <option value="0.5">Yarım (1/2)</option>
+        </select>
+      </label>
+      <label>Kadr sürəti
+        <select id="exp-fps"><option>24</option><option>25</option><option selected>30</option><option>60</option></select>
+      </label>
+      <label>Format <select id="exp-format"></select></label>
+      <label>Keyfiyyət
+        <select id="exp-quality">
+          <option value="4000000">Aşağı (4 Mbit/s)</option>
+          <option value="8000000" selected>Orta (8 Mbit/s)</option>
+          <option value="16000000">Yüksək (16 Mbit/s)</option>
+          <option value="30000000">Çox yüksək (30 Mbit/s)</option>
+        </select>
+      </label>
+      <label class="check-label"><input type="checkbox" id="exp-cover" checked> Qapağı videonun ilk kadrı kimi əlavə et</label>
+      <div class="dir-row" id="exp-dir-row">
+        <span class="dir-label">Saxlanma yeri</span>
+        <span class="dir-path" id="exp-dir" title="">Hər dəfə soruş</span>
+        <button class="btn" id="exp-dir-pick">Qovluq seç</button>
+        <button class="btn" id="exp-dir-ask" title="Hər ixracda saxlama dialoqu açılsın">Soruş</button>
+      </div>
+    </div>
+    <p class="hint" id="exp-saved" ></p>
+    <p class="hint">İxrac real vaxtda aparılır: 1 dəqiqəlik video təxminən 1 dəqiqə çəkir. Proses zamanı pəncərəni kiçiltməyin.</p>
+    <div id="exp-progress" class="progress hidden"><div class="progress-bar"><div id="exp-bar"></div></div><span id="exp-status">0%</span></div>
+    <div class="modal-actions">
+      <button id="exp-show" class="btn hidden">Qovluqda göstər</button>
+      <button id="exp-cancel" class="btn">Bağla</button>
+      <button id="exp-start" class="btn primary">İxraca başla</button>
+    </div>
+  </div>
+</div>
+
+<div id="dlg-cover" class="modal hidden">
+  <div class="modal-card wide">
+    <h2>Qapaq (üz şəkli)</h2>
+    <div class="cover-body">
+      <div class="cover-preview"><canvas id="cover-canvas"></canvas><div class="cover-empty" id="cover-empty">Qapaq seçilməyib</div></div>
+      <div class="cover-side">
+        <h4>Videodan kadr seç</h4>
+        <input type="range" id="cover-time" min="0" max="100" step="0.01" value="0">
+        <div class="row-inline"><span id="cover-time-label">00:00.00</span><span class="spacer"></span><button class="btn" id="cover-use-playhead">Cari kadr</button></div>
+        <h4>və ya şəkil yüklə</h4>
+        <button class="btn" id="cover-upload">Şəkil seç</button>
+        <p class="hint">Qapaq şəkli videonun ən əvvəlində bir kadr kimi yerləşdirilir. YouTube, TikTok kimi platformalar onu üz şəkli kimi göstərir.</p>
+        <button class="btn" id="cover-save-png">Qapağı PNG kimi saxla</button>
+        <button class="btn danger" id="cover-remove">Qapağı sil</button>
+      </div>
+    </div>
+    <div class="modal-actions">
+      <button id="cover-close" class="btn">Bağla</button>
+      <button id="cover-apply" class="btn primary">Qapağı təsdiq et</button>
+    </div>
+  </div>
+</div>
+
+<div id="dlg-record" class="modal hidden">
+  <div class="modal-card">
+    <h2 id="rec-title">Yazı</h2>
+    <div class="rec-preview"><video id="rec-video" autoplay muted playsinline></video><div id="rec-audio-only" class="rec-audio hidden"><svg class="ic"><use href="#i-mic"/></svg><canvas id="rec-meter" width="300" height="40"></canvas></div></div>
+    <div class="rec-status"><span class="rec-dot hidden" id="rec-dot"></span><span id="rec-time">00:00</span><span id="rec-hint" class="hint"></span></div>
+    <div class="modal-actions">
+      <button id="rec-close" class="btn">Bağla</button>
+      <button id="rec-toggle" class="btn primary">Yazmağa başla</button>
+    </div>
+  </div>
+</div>
+
+<div id="dlg-missing" class="modal hidden">
+  <div class="modal-card">
+    <h2>Media faylları tapılmadı</h2>
+    <p class="hint">Layihə aşağıdakı fayllara istinad edir. Eyni adlı faylları seçin ki, yenidən bağlansın.</p>
+    <ul id="missing-list" class="missing-list"></ul>
+    <div class="modal-actions">
+      <button id="missing-skip" class="btn">Ötür</button>
+      <button id="missing-pick" class="btn primary">Faylları seç</button>
+    </div>
+  </div>
+</div>
+
+<div id="dlg-confirm" class="modal hidden">
+  <div class="modal-card small-card">
+    <h2 id="confirm-title">Əminsiniz?</h2>
+    <p id="confirm-text" class="hint"></p>
+    <div class="modal-actions">
+      <button id="confirm-no" class="btn">Xeyr</button>
+      <button id="confirm-yes" class="btn danger">Bəli</button>
+    </div>
+  </div>
+</div>
+
+<div id="dlg-prompt" class="modal hidden">
+  <div class="modal-card small-card">
+    <h2 id="prompt-title">Ad</h2>
+    <input id="prompt-input" class="wide-input">
+    <div class="modal-actions">
+      <button id="prompt-no" class="btn">Ləğv et</button>
+      <button id="prompt-yes" class="btn primary">Təsdiq</button>
+    </div>
+  </div>
+</div>
+
+<div id="dlg-about" class="modal hidden">
+  <div class="modal-card small-card about">
+    <img class="about-logo" src="assets/logo-256.png" alt="">
+    <h2>Kəsyapışdır</h2>
+    <p class="hint">Versiya 1.1<br>Azərbaycan dilində video redaktoru</p>
+    <div class="modal-actions"><button id="about-close" class="btn primary">Bağla</button></div>
+  </div>
+</div>
+
+<div id="toast" class="toast hidden"></div>
+
+<input type="file" id="file-import" multiple accept="video/*,audio/*,image/*" hidden>
+<input type="file" id="file-import-audio" multiple accept="audio/*" hidden>
+<input type="file" id="file-cover" accept="image/*" hidden>
+<input type="file" id="file-project" accept=".ksy,application/json" hidden>
+<input type="file" id="file-missing" multiple hidden>
+
+<script src="js/state.js"></script>
+<script src="js/media.js"></script>
+<script src="js/transitions.js"></script>
+<script src="js/renderer.js"></script>
+<script src="js/timeline.js"></script>
+<script src="js/inspector.js"></script>
+<script src="js/exporter.js"></script>
+<script src="js/recorder.js"></script>
+<script src="js/cover.js"></script>
+<script src="js/app.js"></script>
+</body>
+</html>

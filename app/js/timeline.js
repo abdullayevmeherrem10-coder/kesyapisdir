@@ -1,0 +1,501 @@
+/* ===== Kəsyapışdır — zaman xətti (treklər, kliplər, sürükləmə, kəsmə, maqnit) ===== */
+const Timeline = (() => {
+  const $ = id => document.getElementById(id);
+  const scroll = $('timeline-scroll'), content = $('timeline-content'), ruler = $('ruler');
+  const tracksEl = $('tracks'), headersEl = $('track-headers'), playheadEl = $('playhead');
+  const TRACK_H = { video: 84, audio: 50, text: 42 };
+  const ICON = n => `<svg class="ic"><use href="#i-${n}"/></svg>`;
+  const TRACK_ICON = { video: ICON('film'), audio: ICON('music'), text: ICON('type') };
+  const PAD_SEC = 15;
+  const SNAP_PX = 8;
+  let pxPerSec = 80, snap = true;
+  let drag = null, scrubbing = false, marquee = null, suppressCtx = false;
+
+  const x2t = x => x / pxPerSec;
+  const t2x = t => t * pxPerSec;
+  const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+
+  function contentWidth() { return Math.max(scroll.clientWidth, t2x(State.duration() + PAD_SEC)); }
+
+  /* ---- Xətkeş ---- */
+  function renderRuler(width) {
+    ruler.innerHTML = '';
+    const steps = [0.1, 0.25, 0.5, 1, 2, 5, 10, 15, 30, 60, 120, 300];
+    let step = steps.find(s => t2x(s) >= 70) || 600;
+    const minor = step / 5;
+    const total = x2t(width);
+    const frag = document.createDocumentFragment();
+    const count = Math.ceil(total / minor);
+    for (let i = 0; i <= count; i++) {
+      const t = Math.round(i * minor * 1000) / 1000;
+      const isMajor = Math.abs(t / step - Math.round(t / step)) < 1e-6;
+      const tick = document.createElement('div');
+      tick.className = 'tick' + (isMajor ? ' major' : '');
+      tick.style.left = t2x(t) + 'px';
+      frag.appendChild(tick);
+      if (isMajor) {
+        const lbl = document.createElement('div');
+        lbl.className = 'tick-label';
+        lbl.style.left = t2x(t) + 'px';
+        lbl.textContent = step < 1 ? Media.fmtTime(t, true).replace(/^00:/, '') : Media.fmtTime(t);
+        frag.appendChild(lbl);
+      }
+    }
+    ruler.appendChild(frag);
+  }
+
+  /* ---- Kliplər ---- */
+  function renderClip(clip) {
+    const el = document.createElement('div');
+    el.className = `clip clip-${clip.type}` + (State.selection.includes(clip.id) ? ' selected' : '');
+    el.dataset.clipId = clip.id;
+    positionClipEl(el, clip);
+    const m = State.media.get(clip.mediaId);
+    const label = clip.type === 'text' ? clip.text.content.split('\n')[0] : (m ? m.name : 'Media tapılmadı');
+    el.innerHTML = `<div class="clip-handle left"></div><div class="clip-body"></div><span class="clip-label">${esc(label)}</span><div class="clip-handle right"></div>`;
+    const body = el.querySelector('.clip-body');
+    if (m && m.thumb && clip.type !== 'audio') body.style.backgroundImage = `url(${m.thumb})`;
+    if (m && m.peaks && (clip.type === 'audio' || clip.type === 'video')) {
+      const wave = document.createElement('canvas');
+      wave.className = 'clip-wave';
+      el.appendChild(wave);
+      el.classList.add('has-wave');
+      drawWave(wave, clip, m);
+    }
+    if (!m && clip.type !== 'text') el.style.background = '#6b2d2d';
+    if (clip.speed !== 1) {
+      const sp = document.createElement('span'); sp.className = 'clip-speed'; sp.textContent = `${clip.speed}×`; el.appendChild(sp);
+    }
+    if (clip.fadeIn > 0) { const f = document.createElement('span'); f.className = 'clip-fade'; f.style.left = '0'; f.style.width = t2x(clip.fadeIn) + 'px'; f.style.background = 'linear-gradient(90deg, rgba(0,0,0,.55), transparent)'; el.appendChild(f); }
+    if (clip.fadeOut > 0) { const f = document.createElement('span'); f.className = 'clip-fade'; f.style.right = '0'; f.style.width = t2x(clip.fadeOut) + 'px'; f.style.background = 'linear-gradient(270deg, rgba(0,0,0,.55), transparent)'; el.appendChild(f); }
+    const tr = Renderer.transitionOf(clip);
+    if (tr) {
+      const tm = document.createElement('span'); tm.className = 'clip-transition';
+      tm.style.width = Math.max(14, t2x(tr.d)) + 'px';
+      tm.innerHTML = ICON('transition');
+      tm.title = `Keçid: ${(Transitions.byId(tr.type) || {}).name || tr.type} (${tr.d.toFixed(1)} s)`;
+      el.appendChild(tm);
+    }
+    el.title = `${label}\nBaşlama: ${Media.fmtTime(clip.start, true)}  Müddət: ${Media.fmtTime(clip.duration, true)}`;
+    return el;
+  }
+  function positionClipEl(el, clip) {
+    el.style.left = t2x(clip.start) + 'px';
+    el.style.width = Math.max(4, t2x(clip.duration)) + 'px';
+    const wave = el.querySelector('.clip-wave');
+    if (wave) { const m = State.media.get(clip.mediaId); if (m && m.peaks) drawWave(wave, clip, m); }
+  }
+
+  /* Klipin görünən hissəsinə uyğun səs dalğasını çək */
+  function drawWave(canvas, clip, m) {
+    const widthPx = Math.max(4, Math.round(t2x(clip.duration)));
+    const h = clip.type === 'audio' ? (TRACK_H.audio - 6) : Math.round((TRACK_H.video - 6) * 0.4);
+    const w = Math.min(widthPx, 6000);
+    if (canvas.width !== w) canvas.width = w;
+    if (canvas.height !== h) canvas.height = h;
+    const ctx = canvas.getContext('2d');
+    ctx.clearRect(0, 0, w, h);
+    const pps = m.peaksPerSec, peaks = m.peaks;
+    const segStart = clip.in, segLen = clip.duration * clip.speed;
+    const perPx = segLen / w;
+    ctx.fillStyle = clip.type === 'audio' ? 'rgba(120,190,255,0.9)' : 'rgba(150,200,255,0.85)';
+    const mid = h / 2;
+    for (let x = 0; x < w; x++) {
+      const t0 = segStart + x * perPx;
+      let i0 = Math.floor(t0 * pps), i1 = Math.max(i0 + 1, Math.ceil((t0 + perPx) * pps));
+      let v = 0;
+      for (let i = i0; i < i1 && i < peaks.length; i++) if (peaks[i] > v) v = peaks[i];
+      const bh = Math.max(1, v * h);
+      ctx.fillRect(x, mid - bh / 2, 1, bh);
+    }
+  }
+
+  /* ---- Tam yenidən qurma ---- */
+  function render() {
+    const p = State.project;
+    if (!p) return;
+    const width = contentWidth();
+    content.style.width = width + 'px';
+    renderRuler(width);
+    headersEl.innerHTML = '';
+    tracksEl.innerHTML = '';
+    for (const track of p.tracks) {
+      const h = TRACK_H[track.type] || 50;
+      const hd = document.createElement('div');
+      hd.className = 'track-header';
+      hd.style.height = h + 'px';
+      hd.dataset.trackId = track.id;
+      hd.title = `${track.name} — sağ klik: menyu`;
+      hd.innerHTML = `<span class="track-icon" title="${esc(track.name)}">${TRACK_ICON[track.type]}</span>
+        <button class="hbtn ${track.hidden ? 'on' : ''}" data-act="hide" title="${track.hidden ? 'Göstər' : 'Gizlət'}">${ICON(track.hidden ? 'eye-off' : 'eye')}</button>
+        <button class="hbtn ${track.muted ? 'on' : ''}" data-act="mute" title="${track.muted ? 'Səsi aç' : 'Səssiz et'}">${ICON(track.muted ? 'mute' : 'volume')}</button>`;
+      if (track.type === 'audio') hd.querySelector('[data-act=hide]').style.visibility = 'hidden';
+      if (track.type === 'text') hd.querySelector('[data-act=mute]').style.visibility = 'hidden';
+      headersEl.appendChild(hd);
+
+      const lane = document.createElement('div');
+      lane.className = 'track-lane';
+      lane.style.height = h + 'px';
+      lane.style.opacity = track.hidden ? 0.45 : 1;
+      lane.dataset.trackId = track.id;
+      lane.dataset.type = track.type;
+      for (const clip of track.clips) lane.appendChild(renderClip(clip));
+      if (track.type === 'video' && !track.clips.length && track === [...p.tracks].reverse().find(t => t.type === 'video')) {
+        const ph = document.createElement('div'); ph.className = 'lane-placeholder'; ph.textContent = 'Faylları bura buraxın'; lane.appendChild(ph);
+      }
+      tracksEl.appendChild(lane);
+    }
+    updatePlayhead();
+    $('tl-undo').disabled = !State.canUndo;
+    $('tl-redo').disabled = !State.canRedo;
+  }
+
+  function refreshSelection() {
+    for (const el of content.querySelectorAll('.clip')) el.classList.toggle('selected', State.selection.includes(el.dataset.clipId));
+  }
+
+  function updatePlayhead() {
+    playheadEl.style.left = t2x(State.playhead) + 'px';
+  }
+  function followPlayhead() {
+    const px = t2x(State.playhead);
+    const left = scroll.scrollLeft, w = scroll.clientWidth;
+    if (px < left || px > left + w - 30) scroll.scrollLeft = Math.max(0, px - 80);
+  }
+
+  /* ---- Maqnit ---- */
+  function snapPoints(excludeIds) {
+    const pts = [0, State.playhead];
+    for (const t of State.project.tracks) for (const c of t.clips) if (!excludeIds.includes(c.id)) pts.push(c.start, c.start + c.duration);
+    return pts;
+  }
+  function snapPoint(t, excludeIds) {
+    if (!snap) return t;
+    const thr = x2t(SNAP_PX);
+    let best = t, bestD = thr;
+    for (const p of snapPoints(excludeIds)) { const d = Math.abs(p - t); if (d < bestD) { bestD = d; best = p; } }
+    return best;
+  }
+  function snapRange(start, dur, excludeIds) {
+    if (!snap) return start;
+    const thr = x2t(SNAP_PX);
+    let best = start, bestD = thr;
+    for (const p of snapPoints(excludeIds)) {
+      const d1 = Math.abs(p - start); if (d1 < bestD) { bestD = d1; best = p; }
+      const d2 = Math.abs(p - (start + dur)); if (d2 < bestD) { bestD = d2; best = p - dur; }
+    }
+    return Math.max(0, best);
+  }
+
+  /* ---- Göstərici hadisələri ---- */
+  function timeFromEvent(e) {
+    const rect = content.getBoundingClientRect();
+    return Math.max(0, x2t(e.clientX - rect.left));
+  }
+  function laneAtY(y) {
+    for (const lane of tracksEl.children) {
+      const r = lane.getBoundingClientRect();
+      if (y >= r.top && y < r.bottom) return lane;
+    }
+    return null;
+  }
+  function neighbours(track, clip) {
+    let prevEnd = 0, nextStart = Infinity;
+    for (const c of track.clips) {
+      if (c.id === clip.id) continue;
+      const end = c.start + c.duration;
+      if (end <= clip.start + 1e-6 && end > prevEnd) prevEnd = end;
+      if (c.start >= clip.start + clip.duration - 1e-6 && c.start < nextStart) nextStart = c.start;
+    }
+    return { prevEnd, nextStart };
+  }
+
+  function onClipContext(e) {
+    if (suppressCtx) { suppressCtx = false; e.preventDefault(); return; }
+    const clipEl = e.target.closest('.clip');
+    if (!clipEl) return;
+    e.preventDefault();
+    const id = clipEl.dataset.clipId;
+    if (!State.selection.includes(id)) State.select([id]);
+    App.contextMenu(e.clientX, e.clientY, [
+      { label: 'Böl', shortcut: 'Ctrl+B', action: () => App.splitAtPlayhead() },
+      { label: 'Kəs', shortcut: 'Ctrl+X', action: () => App.cutSelected() },
+      { label: 'Kopyala', shortcut: 'Ctrl+C', action: () => App.copySelected() },
+      { label: 'Dublikat', shortcut: 'Ctrl+D', action: () => App.duplicateSelected() },
+      { sep: true },
+      { label: 'Xüsusiyyətlər', action: () => App.showPage('props') },
+      { label: 'Keçid əlavə et', action: () => App.showPage('transitions') },
+      { sep: true },
+      { label: 'Sil', shortcut: 'Delete', danger: true, action: () => App.deleteSelected() }
+    ]);
+  }
+
+  /* Çərçivə ilə seçim: sağ düymə hər yerdə, sol düymə boş sahədə */
+  function startMarquee(e) {
+    marquee = { cx: e.clientX, cy: e.clientY, button: e.button, moved: false, additive: e.shiftKey, base: e.shiftKey ? [...State.selection] : [], el: null };
+    e.preventDefault();
+  }
+  function marqueeHits(e) {
+    const x1 = Math.min(marquee.cx, e.clientX), x2 = Math.max(marquee.cx, e.clientX);
+    const y1 = Math.min(marquee.cy, e.clientY), y2 = Math.max(marquee.cy, e.clientY);
+    const ids = [];
+    for (const el of tracksEl.querySelectorAll('.clip')) {
+      const r = el.getBoundingClientRect();
+      if (r.left < x2 && r.right > x1 && r.top < y2 && r.bottom > y1) ids.push(el.dataset.clipId);
+    }
+    return [...new Set([...marquee.base, ...ids])];
+  }
+  function updateMarquee(e) {
+    const rect = content.getBoundingClientRect();
+    if (!marquee.el) { marquee.el = document.createElement('div'); marquee.el.className = 'marquee'; content.appendChild(marquee.el); }
+    const x1 = Math.min(marquee.cx, e.clientX) - rect.left, x2 = Math.max(marquee.cx, e.clientX) - rect.left;
+    const y1 = Math.min(marquee.cy, e.clientY) - rect.top, y2 = Math.max(marquee.cy, e.clientY) - rect.top;
+    Object.assign(marquee.el.style, { left: x1 + 'px', top: y1 + 'px', width: (x2 - x1) + 'px', height: (y2 - y1) + 'px' });
+    const ids = marqueeHits(e);
+    for (const el of tracksEl.querySelectorAll('.clip')) el.classList.toggle('selected', ids.includes(el.dataset.clipId));
+  }
+
+  function onPointerDown(e) {
+    if (e.button === 2) { startMarquee(e); return; }
+    if (e.button !== 0) return;
+    const clipEl = e.target.closest('.clip');
+    if (!clipEl) { startMarquee(e); return; }
+    const id = clipEl.dataset.clipId;
+    const found = State.findClip(id);
+    if (!found) return;
+    const { clip, track } = found;
+    if (e.shiftKey) State.select([id], true);
+    else if (!State.selection.includes(id)) State.select([id]);
+    const mode = e.target.classList.contains('clip-handle') ? (e.target.classList.contains('left') ? 'trim-l' : 'trim-r') : 'move';
+    const origs = new Map();
+    for (const c of State.selectedClips()) origs.set(c.id, { start: c.start, trackId: c.trackId });
+    drag = {
+      mode, id, startX: e.clientX, moved: false,
+      orig: JSON.parse(JSON.stringify(clip)), origTrackId: track.id, origs,
+      prevEnd: 0, nextStart: Infinity
+    };
+    Object.assign(drag, neighbours(track, clip));
+    e.preventDefault();
+  }
+
+  function onPointerMove(e) {
+    if (scrubbing) { Renderer.seek(timeFromEvent(e)); return; }
+    if (marquee) {
+      if (!marquee.moved) { if (Math.hypot(e.clientX - marquee.cx, e.clientY - marquee.cy) < 4) return; marquee.moved = true; }
+      updateMarquee(e);
+      return;
+    }
+    if (!drag) return;
+    if (!drag.moved) {
+      if (Math.abs(e.clientX - drag.startX) < 3) return;
+      drag.moved = true;
+      State.pushHistory();
+      const el = content.querySelector(`[data-clip-id="${drag.id}"]`);
+      el && el.classList.add('dragging');
+    }
+    const dx = x2t(e.clientX - drag.startX);
+    const found = State.findClip(drag.id);
+    if (!found) return;
+    const { clip, track } = found;
+    const o = drag.orig;
+
+    if (drag.mode === 'move') {
+      const group = State.selectedClips().filter(c => drag.origs.has(c.id));
+      const ids = group.map(c => c.id);
+      let newStart = Math.max(0, o.start + dx);
+      newStart = snapRange(newStart, o.duration, ids);
+      let delta = newStart - o.start;
+      const minOrig = Math.min(...group.map(c => drag.origs.get(c.id).start));
+      if (minOrig + delta < 0) delta = -minOrig;
+
+      // tək klip: trek dəyişikliyi
+      let targetTrack = track;
+      if (group.length === 1) {
+        const lane = laneAtY(e.clientY);
+        if (lane && lane.dataset.trackId !== track.id) {
+          const cand = State.findTrack(lane.dataset.trackId);
+          if (cand && State.trackAccepts(cand, clip.type)) targetTrack = cand;
+        }
+      }
+      // toqquşma yoxlaması
+      let ok = true;
+      for (const c of group) {
+        const tr = c.id === clip.id ? targetTrack : State.findTrack(c.trackId);
+        const s = drag.origs.get(c.id).start + delta;
+        const end = s + c.duration;
+        // seçilmiş qrupdakı kliplər bir-biri ilə toqquşma sayılmır
+        const others = tr.clips.filter(x => !ids.includes(x.id));
+        if (others.some(x => s < x.start + x.duration - 1e-6 && end > x.start + 1e-6)) { ok = false; break; }
+      }
+      if (!ok) return;
+      for (const c of group) {
+        c.start = drag.origs.get(c.id).start + delta;
+        const el = content.querySelector(`[data-clip-id="${c.id}"]`);
+        el && positionClipEl(el, c);
+      }
+      if (targetTrack !== track) {
+        track.clips = track.clips.filter(c => c.id !== clip.id);
+        clip.trackId = targetTrack.id;
+        targetTrack.clips.push(clip);
+        const el = content.querySelector(`[data-clip-id="${clip.id}"]`);
+        const lane = tracksEl.querySelector(`[data-track-id="${targetTrack.id}"]`);
+        if (el && lane) lane.appendChild(el);
+      }
+    } else if (drag.mode === 'trim-l') {
+      let d = dx;
+      d = Math.max(d, drag.prevEnd - o.start);
+      d = Math.min(d, o.duration - State.MIN_CLIP);
+      if (clip.type === 'video' || clip.type === 'audio') d = Math.max(d, -o.in / o.speed);
+      let ns = snapPoint(o.start + d, [clip.id]);
+      d = State.clamp(ns - o.start, Math.max(drag.prevEnd - o.start, (clip.type === 'video' || clip.type === 'audio') ? -o.in / o.speed : -Infinity), o.duration - State.MIN_CLIP);
+      clip.start = o.start + d;
+      clip.duration = o.duration - d;
+      clip.in = o.in + d * o.speed;
+      const el = content.querySelector(`[data-clip-id="${clip.id}"]`);
+      el && positionClipEl(el, clip);
+    } else if (drag.mode === 'trim-r') {
+      let d = dx;
+      const maxDur = Math.min(State.maxDuration(o), drag.nextStart - o.start);
+      let nd = o.duration + d;
+      nd = snapPoint(o.start + nd, [clip.id]) - o.start;
+      nd = State.clamp(nd, State.MIN_CLIP, maxDur);
+      clip.duration = nd;
+      const el = content.querySelector(`[data-clip-id="${clip.id}"]`);
+      el && positionClipEl(el, clip);
+    }
+    if (!Renderer.playing) Renderer.refresh();
+  }
+
+  function onPointerUp(e) {
+    if (scrubbing) { scrubbing = false; return; }
+    if (marquee) {
+      const m = marquee;
+      const hits = m.moved ? marqueeHits(e) : [];
+      marquee = null;
+      if (m.el) m.el.remove();
+      if (m.moved) { State.select(hits); suppressCtx = m.button === 2; }
+      else if (m.button === 0) { if (!m.additive) State.select([]); Renderer.seek(timeFromEvent(e)); }
+      return;
+    }
+    if (!drag) return;
+    const moved = drag.moved;
+    const found = State.findClip(drag.id);
+    drag = null;
+    if (moved) {
+      if (found) State.sortTrack(found.track);
+      for (const t of State.project.tracks) State.sortTrack(t);
+      State.emit('structure');
+    }
+  }
+
+  /* ---- Trek başlıqları ---- */
+  function onHeaderClick(e) {
+    const btn = e.target.closest('.hbtn');
+    const hd = e.target.closest('.track-header');
+    if (!hd) return;
+    const track = State.findTrack(hd.dataset.trackId);
+    if (!track) return;
+    if (!btn) return;
+    const act = btn.dataset.act;
+    if (act === 'mute') State.mutate(() => { track.muted = !track.muted; });
+    else if (act === 'hide') State.mutate(() => { track.hidden = !track.hidden; });
+  }
+  function removeTrack(track) {
+    const doRemove = () => State.mutate(p => { p.tracks = p.tracks.filter(t => t.id !== track.id); State.pruneSelection(); });
+    if (track.clips.length) App.confirm('Treki sil', `"${track.name}" trekində ${track.clips.length} klip var. Silinsin?`, doRemove);
+    else doRemove();
+  }
+  function onHeaderContext(e) {
+    const hd = e.target.closest('.track-header');
+    if (!hd) return;
+    e.preventDefault();
+    const track = State.findTrack(hd.dataset.trackId);
+    App.contextMenu(e.clientX, e.clientY, [
+      { label: 'Adını dəyiş', action: () => App.prompt('Trekin adı', track.name, v => State.mutate(() => { track.name = v; })) },
+      { label: track.muted ? 'Səsi aç' : 'Səssiz et', action: () => State.mutate(() => { track.muted = !track.muted; }) },
+      { label: track.hidden ? 'Göstər' : 'Gizlət', action: () => State.mutate(() => { track.hidden = !track.hidden; }) },
+      { sep: true },
+      { label: 'Yuxarı köçür', action: () => State.mutate(p => { const i = p.tracks.indexOf(track); if (i > 0) { p.tracks.splice(i, 1); p.tracks.splice(i - 1, 0, track); } }) },
+      { label: 'Aşağı köçür', action: () => State.mutate(p => { const i = p.tracks.indexOf(track); if (i < p.tracks.length - 1) { p.tracks.splice(i, 1); p.tracks.splice(i + 1, 0, track); } }) },
+      { sep: true },
+      { label: 'Treki sil', danger: true, action: () => removeTrack(track) }
+    ]);
+  }
+  /* ---- Sürüklə-burax (kitabxanadan və fayl sistemindən) ---- */
+  function onDragOver(e) {
+    const types = e.dataTransfer.types;
+    if (!types.includes('application/x-ksy-media') && !types.includes('Files')) return;
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'copy';
+    for (const l of tracksEl.children) l.classList.remove('drag-over');
+    const lane = e.target.closest('.track-lane');
+    lane && lane.classList.add('drag-over');
+  }
+  function onDragLeave() { for (const l of tracksEl.children) l.classList.remove('drag-over'); }
+  async function onDrop(e) {
+    e.preventDefault();
+    onDragLeave();
+    const t = timeFromEvent(e);
+    const lane = e.target.closest('.track-lane');
+    const trackId = lane ? lane.dataset.trackId : null;
+    const mediaId = e.dataTransfer.getData('application/x-ksy-media');
+    if (mediaId) { Media.addToTimeline(mediaId, t, trackId); return; }
+    if (e.dataTransfer.files && e.dataTransfer.files.length) {
+      const before = new Set(State.media.keys());
+      await Media.importFiles([...e.dataTransfer.files]);
+      let at = t;
+      for (const id of State.media.keys()) if (!before.has(id)) { Media.addToTimeline(id, at, trackId); at = State.duration(); }
+    }
+  }
+
+  /* ---- Miqyas / sürüşmə ---- */
+  function setZoom(v, anchorClientX = null) {
+    const old = pxPerSec;
+    v = State.clamp(v, 8, 400);
+    if (v === old) return;
+    let tAt = null, offset = 0;
+    if (anchorClientX != null) {
+      const rect = content.getBoundingClientRect();
+      tAt = (anchorClientX - rect.left) / old;
+      offset = anchorClientX - scroll.getBoundingClientRect().left;
+    }
+    pxPerSec = v;
+    $('tl-zoom').value = v;
+    render();
+    if (tAt != null) scroll.scrollLeft = Math.max(0, tAt * pxPerSec - offset);
+  }
+  function onWheel(e) {
+    if (e.ctrlKey) {
+      e.preventDefault();
+      setZoom(pxPerSec * (e.deltaY < 0 ? 1.15 : 1 / 1.15), e.clientX);
+    } else if (!e.shiftKey && Math.abs(e.deltaY) > Math.abs(e.deltaX)) {
+      e.preventDefault();
+      scroll.scrollLeft += e.deltaY;
+    }
+  }
+  function zoomToFit() {
+    const dur = Math.max(1, State.duration());
+    setZoom((scroll.clientWidth - 40) / dur);
+  }
+
+  function init() {
+    tracksEl.addEventListener('pointerdown', onPointerDown);
+    tracksEl.addEventListener('contextmenu', onClipContext);
+    ruler.addEventListener('pointerdown', e => { if (e.button === 0) { scrubbing = true; Renderer.seek(timeFromEvent(e)); } });
+    playheadEl.querySelector('.playhead-head').addEventListener('pointerdown', e => { if (e.button === 0) { scrubbing = true; e.preventDefault(); } });
+    window.addEventListener('pointermove', onPointerMove);
+    window.addEventListener('pointerup', onPointerUp);
+    headersEl.addEventListener('click', onHeaderClick);
+    headersEl.addEventListener('contextmenu', onHeaderContext);
+    scroll.addEventListener('dragover', onDragOver);
+    scroll.addEventListener('dragleave', onDragLeave);
+    scroll.addEventListener('drop', onDrop);
+    scroll.addEventListener('wheel', onWheel, { passive: false });
+    scroll.addEventListener('scroll', () => { headersEl.style.transform = `translateY(${-scroll.scrollTop}px)`; });
+    $('tl-zoom').addEventListener('input', e => setZoom(+e.target.value));
+    $('tl-snap').addEventListener('click', () => { snap = !snap; $('tl-snap').classList.toggle('on', snap); });
+    new ResizeObserver(() => { if (State.project) render(); }).observe(scroll);
+  }
+
+  return { init, render, refreshSelection, updatePlayhead, followPlayhead, setZoom, zoomToFit, get pxPerSec() { return pxPerSec; }, get snap() { return snap; }, setSnap(v) { snap = v; $('tl-snap').classList.toggle('on', snap); } };
+})();
