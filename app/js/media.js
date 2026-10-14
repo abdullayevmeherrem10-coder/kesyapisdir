@@ -67,8 +67,20 @@ const Media = (() => {
   /* Səs dalğası üçün piklər: saniyədə PEAKS_PER_SEC dəyər (0..1) */
   const PEAKS_PER_SEC = 50;
   const MAX_DECODE_BYTES = 600 * 1024 * 1024;
-  async function computePeaks(m) {
-    if (m.type === 'image' || m.peaks || m.size > MAX_DECODE_BYTES) return;
+  const SCAN_RATE = 16; // ehtiyat yolda oxutma sürəti (Chromium maksimum 16×)
+
+  function finishPeaks(m, peaks) {
+    let max = 0; for (let i = 0; i < peaks.length; i++) if (peaks[i] > max) max = peaks[i];
+    m.peakMax = max;
+    // normallaşdır (sakit səslər də görünsün)
+    if (max > 0 && max < 0.9) for (let i = 0; i < peaks.length; i++) peaks[i] = peaks[i] / max * 0.9;
+    m.peaks = peaks; m.peaksPerSec = PEAKS_PER_SEC;
+    m.noAudio = max === 0;
+  }
+
+  /* 1-ci yol: faylı bütöv dekod et (sürətli, amma hər konteyner/kodek üçün işləmir) */
+  async function peaksByDecode(m) {
+    if (m.size > MAX_DECODE_BYTES) return false;
     try {
       const buf = await m.file.arrayBuffer();
       const octx = new OfflineAudioContext(1, 1, 44100);
@@ -86,15 +98,78 @@ const Media = (() => {
           if (v > peaks[i]) peaks[i] = v;
         }
       }
-      // normallaşdır (sakit səslər də görünsün)
-      let max = 0; for (let i = 0; i < count; i++) if (peaks[i] > max) max = peaks[i];
-      m.peakMax = max;
-      if (max > 0 && max < 0.9) for (let i = 0; i < count; i++) peaks[i] = peaks[i] / max * 0.9;
-      m.peaks = peaks; m.peaksPerSec = PEAKS_PER_SEC;
+      finishPeaks(m, peaks);
       if (!m.duration) m.duration = audio.duration;
+      return true;
     } catch (e) {
-      m.peaks = null; m.noAudio = true; // səs yolu yoxdur və ya oxunmadı
+      return false; // konteyner/kodek dəstəklənmir və ya fayl çox böyükdür
     }
+  }
+
+  /* 2-ci yol: faylı səssiz audio elementi ilə sürətli oxudub pikləri topla.
+     Böyük MP4 və decodeAudioData-nın oxumadığı formatlar üçün. Dalğa tədricən görünür. */
+  let scanChain = Promise.resolve();
+  function peaksByPlayback(m) {
+    const run = () => new Promise(resolve => {
+      if (!m.duration || !isFinite(m.duration) || !State.media.has(m.id)) { resolve(false); return; }
+      let ctx;
+      try { ctx = new (window.AudioContext || window.webkitAudioContext)(); } catch { resolve(false); return; }
+      const el = document.createElement('audio'); // video faylında da yalnız səs yolunu oxuyur
+      el.preload = 'auto'; el.preservesPitch = false; el.src = m.url;
+      const count = Math.ceil(m.duration * PEAKS_PER_SEC);
+      const peaks = new Float32Array(count);
+      m.peaks = peaks; m.peaksPerSec = PEAKS_PER_SEC; m.peakMax = 1; // tədricən dolacaq
+      const src = ctx.createMediaElementSource(el);
+      const proc = ctx.createScriptProcessor(4096, 2, 1);
+      const gain = ctx.createGain(); gain.gain.value = 0;
+      src.connect(proc); proc.connect(gain); gain.connect(ctx.destination);
+      let tPrev = 0, lastDraw = 0, done = false, got = false;
+      const finish = ok => {
+        if (done) return; done = true;
+        try { proc.disconnect(); src.disconnect(); gain.disconnect(); } catch {}
+        try { el.pause(); el.removeAttribute('src'); el.load(); } catch {}
+        ctx.close().catch(() => {});
+        if (ok && got) finishPeaks(m, peaks); else m.peaks = null;
+        resolve(ok && got);
+      };
+      proc.onaudioprocess = ev => {
+        if (done) return;
+        const tNow = el.currentTime;
+        if (tNow <= tPrev) return; // dayanıb (bufer gözləyir)
+        const ib = ev.inputBuffer, n = ib.length, chans = ib.numberOfChannels;
+        const span = tNow - tPrev;
+        for (let ch = 0; ch < chans; ch++) {
+          const data = ib.getChannelData(ch);
+          for (let j = 0; j < n; j++) {
+            const a = data[j] < 0 ? -data[j] : data[j];
+            if (a === 0) continue;
+            const idx = Math.floor((tPrev + span * j / n) * PEAKS_PER_SEC);
+            if (idx >= 0 && idx < count && a > peaks[idx]) { peaks[idx] = a; got = true; }
+          }
+        }
+        tPrev = tNow;
+        const now = performance.now();
+        if (now - lastDraw > 1500) { lastDraw = now; if (State.project) Timeline.render(); }
+      };
+      el.addEventListener('ended', () => finish(true));
+      el.addEventListener('error', () => finish(false));
+      const guard = setTimeout(() => finish(true), (m.duration / SCAN_RATE + 30) * 1000 * 2);
+      el.addEventListener('ended', () => clearTimeout(guard));
+      el.playbackRate = SCAN_RATE;
+      el.play().catch(() => finish(false));
+    });
+    const p = scanChain.then(run, run);
+    scanChain = p.catch(() => {});
+    return p;
+  }
+
+  async function computePeaks(m) {
+    if (m.type === 'image' || m.peaks || m.peaksBusy) return;
+    m.peaksBusy = true;
+    let ok = await peaksByDecode(m);
+    if (!ok) ok = await peaksByPlayback(m);
+    if (!ok) { m.peaks = null; m.noAudio = true; } // səs yolu yoxdur və ya oxunmadı
+    m.peaksBusy = false;
     if (State.project) Timeline.render();
   }
 
