@@ -145,9 +145,53 @@ const Timeline = (() => {
       }
       tracksEl.appendChild(lane);
     }
+    renderAddRow();
     updatePlayhead();
     $('tl-undo').disabled = !State.canUndo;
     $('tl-redo').disabled = !State.canRedo;
+  }
+
+  /* ---- Treklərin altında "Yeni trek" sırası ---- */
+  const ADD_ROW_H = 44;
+  function addTrackMenu(x, y) {
+    App.contextMenu(x, y, [
+      { label: 'Video / şəkil treki', action: () => App.addTrack('video') },
+      { label: 'Mətn treki', action: () => App.addTrack('text') },
+      { label: 'Audio treki', action: () => App.addTrack('audio') },
+      { sep: true },
+      { label: 'Mikrofondan yaz', action: () => Recorder.open('mic') }
+    ]);
+  }
+  function renderAddRow() {
+    const hd = document.createElement('div');
+    hd.className = 'add-track-head';
+    hd.style.height = ADD_ROW_H + 'px';
+    hd.innerHTML = `<button class="hbtn" title="Yeni trek əlavə et">${ICON('plus')}</button>`;
+    hd.querySelector('button').addEventListener('click', e => {
+      const r = e.currentTarget.getBoundingClientRect();
+      addTrackMenu(r.right + 4, r.top);
+    });
+    headersEl.appendChild(hd);
+
+    const lane = document.createElement('div');
+    lane.className = 'add-lane';
+    lane.style.height = ADD_ROW_H + 'px';
+    lane.innerHTML = `<div class="add-lane-inner">
+      <span class="add-lane-label">Yeni trek:</span>
+      <button class="add-chip" data-add="video" title="Yeni video / şəkil treki">${ICON('film')}<span>Video</span></button>
+      <button class="add-chip" data-add="audio" title="Yeni audio treki">${ICON('music')}<span>Səs</span></button>
+      <button class="add-chip" data-add="text" title="Yeni mətn treki">${ICON('type')}<span>Mətn</span></button>
+      <button class="add-chip" data-add="mic" title="Mikrofondan səs yaz">${ICON('mic')}<span>Mikrofon</span></button>
+    </div>`;
+    // Bu sırada çərçivə seçimi və klip menyusu işləməsin
+    lane.addEventListener('pointerdown', e => e.stopPropagation());
+    lane.addEventListener('contextmenu', e => { e.preventDefault(); e.stopPropagation(); addTrackMenu(e.clientX, e.clientY); });
+    lane.addEventListener('click', e => {
+      const b = e.target.closest('.add-chip');
+      if (!b) return;
+      if (b.dataset.add === 'mic') Recorder.open('mic'); else App.addTrack(b.dataset.add);
+    });
+    tracksEl.appendChild(lane);
   }
 
   function refreshSelection() {
