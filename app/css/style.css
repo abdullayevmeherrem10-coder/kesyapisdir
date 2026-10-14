@@ -26,7 +26,7 @@
 }
 * { box-sizing: border-box; }
 html, body { height: 100%; margin: 0; background: var(--bg); color: var(--text); font-size: 12px; overflow: hidden; }
-body { display: grid; grid-template-rows: 30px minmax(0, 1fr) 6px var(--tl-h, 42vh) 22px; grid-template-columns: minmax(0, 1fr); }
+body { display: grid; grid-template-rows: 30px minmax(0, 1fr) 6px var(--tl-h, 45vh) 22px; grid-template-columns: minmax(0, 1fr); }
 .splitter { background: var(--bg); position: relative; z-index: 20; }
 .splitter::after { content: ""; position: absolute; inset: 0; background: var(--border); transition: background .15s; }
 .splitter.v { cursor: col-resize; }
@@ -102,9 +102,10 @@ input[type=checkbox] { accent-color: var(--accent); width: 15px; height: 15px; }
 
 /* ===== İş sahəsi ===== */
 .workspace { display: grid; grid-template-columns: 84px var(--content-w, minmax(380px, 1fr)) 6px minmax(0, 1fr); min-height: 0; min-width: 0; }
-.rail { display: flex; flex-direction: column; gap: 0; padding: 6px 6px; border-right: 1px solid var(--border); background: var(--bg); overflow-y: auto; scrollbar-width: none; }
+.rail { display: flex; flex-direction: column; justify-content: space-evenly; gap: 0; padding: 4px 4px; border-right: 1px solid var(--border); background: var(--bg); overflow: hidden; }
 .rail::-webkit-scrollbar { display: none; }
-.rail-item { display: flex; flex-direction: column; align-items: center; gap: 3px; padding: 8px 2px 6px; border-radius: 10px; color: #c9c9c9; font-size: 11px; }
+.rail-item { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px; padding: 4px 1px; border-radius: 10px; color: #c9c9c9; font-size: 10.5px; flex: 1 1 auto; min-height: 0; max-height: 96px; width: 100%; overflow: hidden; }
+.rail-item span { white-space: nowrap; line-height: 1.2; }
 .rail-item .ic { width: 20px; height: 20px; }
 .rail-item:hover { background: var(--bg-3); color: #fff; }
 .rail-item.active { background: var(--bg-4); color: #fff; }
