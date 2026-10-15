@@ -4,7 +4,6 @@ const Timeline = (() => {
   const scroll = $('timeline-scroll'), content = $('timeline-content'), ruler = $('ruler');
   const tracksEl = $('tracks'), headersEl = $('track-headers'), playheadEl = $('playhead'), hoverEl = $('hoverline');
   const TRACK_H = { video: 96, audio: 60, text: 42 };
-  const WAVE_FRAC = 0.48; // video klipdə dalğa zolağının payı (style.css ilə eyni olmalıdır)
   const ICON = n => `<svg class="ic"><use href="#i-${n}"/></svg>`;
   const TRACK_ICON = { video: ICON('film'), audio: ICON('music'), text: ICON('type') };
   const PAD_SEC = 15;
@@ -64,7 +63,8 @@ const Timeline = (() => {
       wave.className = 'clip-wave';
       el.appendChild(wave);
       el.classList.add('has-wave');
-      drawWave(wave, clip, m);
+      wave.dataset.clipId = clip.id;
+      waveRO.observe(wave, { box: 'device-pixel-content-box' }); // ölçüsü bilinəndə çəkiləcək
     }
     if (m && (clip.type === 'audio' || el.classList.contains('has-wave'))) el.appendChild(volUI(clip));
     if (!m && clip.type !== 'text') el.style.background = '#6b2d2d';
@@ -87,43 +87,53 @@ const Timeline = (() => {
   function positionClipEl(el, clip) {
     el.style.left = t2x(clip.start) + 'px';
     el.style.width = Math.max(4, t2x(clip.duration)) + 'px';
-    const wave = el.querySelector('.clip-wave');
-    if (wave) { const m = State.media.get(clip.mediaId); if (m && m.peaks) drawWave(wave, clip, m); }
     const vu = el.querySelector('.vol-ui'); if (vu) updateVolUI(vu, clip);
   }
 
-  /* Klipin görünən hissəsinə uyğun səs dalğasını çək */
-  function drawWave(canvas, clip, m) {
-    const detached = clip.type === 'audio' && m.type === 'video';
-    // Ekran böyütməsi (125%, 150%) olan noutbuklarda da kəskin görünsün
-    const dpr = Math.max(1, window.devicePixelRatio || 1);
-    const cssW = Math.max(4, Math.round(t2x(clip.duration)) - (detached ? 6 : 0));
-    // detached: klip hündürlüyü − başlıq (18) − alt boşluq (3) − kənarlar
-    const cssH = detached ? (TRACK_H.audio - 8 - 24) : clip.type === 'audio' ? (TRACK_H.audio - 6) : Math.round((TRACK_H.video - 8) * WAVE_FRAC);
-    const w = Math.min(Math.round(cssW * dpr), 12000), h = Math.max(4, Math.round(cssH * dpr));
+  /* Klipin görünən hissəsinə uyğun səs dalğasını çək.
+     Kətan ekranın real piksel ölçüsündə çəkilir (ResizeObserver, device-pixel-content-box):
+     brauzer onu dartmır, ona görə istənilən miqyasda və ekran böyütməsində kəskin qalır. */
+  const WAVE_MAX_W = 32000; // kətanın maksimum eni (Chromium həddi ~32767)
+  const waveRO = new ResizeObserver(entries => {
+    for (const en of entries) {
+      const c = en.target, box = en.devicePixelContentBoxSize && en.devicePixelContentBoxSize[0];
+      const dpr = window.devicePixelRatio || 1;
+      c.__dw = box ? box.inlineSize : Math.round(en.contentRect.width * dpr);
+      c.__dh = box ? box.blockSize : Math.round(en.contentRect.height * dpr);
+      drawWave(c);
+    }
+  });
+  function drawWave(canvas) {
+    const found = State.findClip(canvas.dataset.clipId);
+    if (!found) return;
+    const clip = found.clip, m = State.media.get(clip.mediaId);
+    if (!m || !m.peaks || !canvas.__dw || !canvas.__dh) return;
+    const w = Math.min(canvas.__dw, WAVE_MAX_W), h = canvas.__dh;
     if (canvas.width !== w) canvas.width = w;
     if (canvas.height !== h) canvas.height = h;
     const ctx = canvas.getContext('2d');
     ctx.clearRect(0, 0, w, h);
-    const pps = m.peaksPerSec, peaks = m.peaks;
-    const segStart = clip.in, segLen = clip.duration * clip.speed;
-    const perPx = segLen / w;
+    const detached = clip.type === 'audio' && m.type === 'video';
     const bottomUp = detached || clip.type === 'video';
     const vis = Math.min(1, Math.max(0, clip.volume ?? 1)); // səs azaldıqca dalğa da kiçilir
     ctx.fillStyle = detached ? '#17594d' : clip.type === 'audio' ? 'rgba(120,190,255,0.9)' : '#2c3274';
-    // Movavi kimi ayrı-ayrı çubuqlar: hər 2 CSS pikseldə 1 piksel enində
-    const pxCss = w / cssW;
-    const step = Math.max(1, Math.round(2 * pxCss)), barW = Math.max(1, Math.round(pxCss));
-    const pad = bottomUp ? Math.round(2 * pxCss) : 0;
-    for (let x = 0; x < w; x += step) {
+    const pps = m.peaksPerSec, peaks = m.peaks;
+    const segStart = clip.in, segLen = clip.duration * clip.speed;
+    const perPx = segLen / w;
+    const dpx = w / Math.max(1, canvas.clientWidth || w); // bir CSS pikselə düşən ekran pikseli
+    // Doldurulmuş, pilləli siluet: 3 CSS piksellik bloklar, aralarında boşluq yoxdur; tam piksel koordinatları
+    const blk = Math.max(1, Math.round(3 * dpx));
+    const pad = bottomUp ? Math.max(1, Math.round(2 * dpx)) : 0;
+    for (let x = 0; x < w; x += blk) {
       const t0 = segStart + x * perPx;
-      const i0 = Math.floor(t0 * pps), i1 = Math.max(i0 + 1, Math.ceil((t0 + step * perPx) * pps));
+      const i0 = Math.floor(t0 * pps), i1 = Math.max(i0 + 1, Math.ceil((t0 + blk * perPx) * pps));
       let v = 0;
       for (let i = i0; i < i1 && i < peaks.length; i++) if (peaks[i] > v) v = peaks[i];
-      // Kvadrat kök miqyası: sakit danışıq da aydın görünsün (xətti miqyasda çox qısa qalırdı)
+      // Kvadrat kök miqyası: sakit danışıq da aydın görünsün
       v = Math.sqrt(v) * vis;
-      if (bottomUp) { const bh = Math.max(barW, v * (h - pad)); ctx.fillRect(x, h - bh, barW, bh); } // aşağıdan yuxarı
-      else { const bh = Math.max(barW, v * h); ctx.fillRect(x, (h - bh) / 2, barW, bh); }
+      const bw = Math.min(blk, w - x);
+      if (bottomUp) { const bh = Math.max(1, Math.round(v * (h - pad))); ctx.fillRect(x, h - bh, bw, bh); } // aşağıdan yuxarı
+      else { const bh = Math.max(1, Math.round(v * h)); ctx.fillRect(x, Math.round((h - bh) / 2), bw, bh); }
     }
   }
 
@@ -157,7 +167,7 @@ const Timeline = (() => {
   }
   function rerenderClip(clip) {
     const old = content.querySelector(`[data-clip-id="${clip.id}"]`);
-    if (old) old.replaceWith(renderClip(clip));
+    if (old) { const ow = old.querySelector('.clip-wave'); if (ow) waveRO.unobserve(ow); old.replaceWith(renderClip(clip)); }
   }
 
   /* Sürükləyərkən siçanın yanında kiçik ipucu */
@@ -189,6 +199,7 @@ const Timeline = (() => {
     content.style.width = width + 'px';
     renderRuler(width);
     headersEl.innerHTML = '';
+    waveRO.disconnect(); // köhnə kətanlar silinir, yeniləri müşahidə olunacaq
     tracksEl.innerHTML = '';
     for (const track of p.tracks) {
       const h = TRACK_H[track.type] || 50;
