@@ -293,6 +293,26 @@ const App = (() => {
     });
     showPage('props');
   }
+  /* Seçilmiş video kliplərin səsini ayrıca audio klipə çıxar; video səssiz qalır */
+  function detachAudio() {
+    const clips = State.selectedClips().filter(c => c.type === 'video' && State.media.get(c.mediaId)?.type === 'video');
+    if (!clips.length) { toast('Səsi ayırmaq üçün video klip seçin', true); return; }
+    const ids = [];
+    State.mutate(() => {
+      for (const c of clips) {
+        if (c.volume === 0) continue; // artıq səssizdir / ayrılıb
+        const a = State.makeClip('audio', null, c.start, { mediaId: c.mediaId, duration: c.duration, srcDuration: c.srcDuration });
+        a.in = c.in; a.speed = c.speed; a.volume = c.volume; a.fadeIn = c.fadeIn; a.fadeOut = c.fadeOut;
+        a.normalize = !!c.normalize; a.preservesPitch = c.preservesPitch !== false;
+        const track = State.pickTrackFor('audio', c.start, c.duration);
+        State.addClip(a, track.id);
+        ids.push(a.id);
+        c.volume = 0;
+      }
+    });
+    if (ids.length) { State.select(ids); toast(ids.length > 1 ? `${ids.length} klipin səsi ayrıldı` : 'Səs ayrıca audio klipə çıxarıldı'); }
+    else toast('Seçilmiş klipin səsi artıq ayrılıb', true);
+  }
   function addTrack(type) {
     State.mutate(p => {
       const names = { video: 'Video', audio: 'Audio', text: 'Mətn' };
@@ -827,6 +847,6 @@ const App = (() => {
   return {
     toast, confirm, prompt, contextMenu, download, showPage, pickColor,
     splitAtPlayhead, trimAtPlayhead, deleteSelected, duplicateSelected, copySelected, cutSelected, pasteClipboard,
-    addTextClip, addTrack, applyTransition, saveProject, newProject, saveFramePng
+    addTextClip, addTrack, detachAudio, applyTransition, saveProject, newProject, saveFramePng
   };
 })();

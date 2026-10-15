@@ -75,7 +75,8 @@ const Renderer = (() => {
       img.src = m.url;
       e = { el: img, type: 'image', mediaId: m.id };
     } else {
-      const el = document.createElement(m.type === 'audio' ? 'audio' : 'video');
+      // Ayrılmış səs (video faylından audio klip) üçün də yalnız səs oxunsun
+      const el = document.createElement((m.type === 'audio' || clip.type === 'audio') ? 'audio' : 'video');
       el.preload = 'auto';
       el.playsInline = true;
       el.src = m.url;

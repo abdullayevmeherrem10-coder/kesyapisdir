@@ -35,7 +35,7 @@ Windows-da **Başlat.cmd** faylına iki dəfə klikləmək kifayətdir (ilk dəf
 | Video → Arxa fonu sil | Xroma açarı (yaşıl/mavi fon): rəng, pipet, həssaslıq, kənar yumşaqlığı |
 | Video → Maska | Düzbucaqlı, dairə, xətti, ürək, ulduz; ölçü, kənar yumşaqlığı, mövqe, tərs çevirmə |
 | Video → Rötuş | Pürüzsüzləşdir, ağartma, aydınlıq, istilik |
-| Səs | Səviyyə (dB), aydınlanma/qaralma, normallaşdırma, səssiz, tonu saxla |
+| Səs | Səviyyə (dB), aydınlanma/qaralma, normallaşdırma, səssiz, tonu saxla; videodan səsi ayır (ayrıca audio klip); GB-lıq videolarda da səs dalğası |
 | Sürət | 0.1×–10× (loqarifmik sürgü + hazır dəyərlər), tonu saxla |
 | Animasiya | Giriş və çıxış: solma, 4 istiqamətdə sürüşmə, böyümə, kiçilmə, fırlanma, sıçrayış; müddət |
 | Tənzimlə | Parlaqlıq, kontrast, doyğunluq, temperatur, rəng çaları, boz, sepia, bulanıqlıq, vinyet; 12 hazır filtr |

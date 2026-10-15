@@ -55,7 +55,8 @@ const Timeline = (() => {
     el.innerHTML = `<div class="clip-handle left"></div><div class="clip-body"></div><span class="clip-label">${esc(label)}</span><div class="clip-handle right"></div>`;
     const body = el.querySelector('.clip-body');
     if (m && m.thumb && clip.type !== 'audio') body.style.backgroundImage = `url(${m.thumb})`;
-    if (m && m.peaks && (clip.type === 'audio' || clip.type === 'video')) {
+    // Səsi ayrılmış (səssiz) video klipdə dalğa göstərmə — səs artıq audio trekdədir
+    if (m && m.peaks && (clip.type === 'audio' || (clip.type === 'video' && clip.volume > 0))) {
       const wave = document.createElement('canvas');
       wave.className = 'clip-wave';
       el.appendChild(wave);
@@ -258,11 +259,13 @@ const Timeline = (() => {
     e.preventDefault();
     const id = clipEl.dataset.clipId;
     if (!State.selection.includes(id)) State.select([id]);
+    const canDetach = State.selectedClips().some(c => c.type === 'video' && c.volume > 0 && State.media.get(c.mediaId)?.type === 'video');
     App.contextMenu(e.clientX, e.clientY, [
       { label: 'Böl', shortcut: 'Ctrl+B', action: () => App.splitAtPlayhead() },
       { label: 'Kəs', shortcut: 'Ctrl+X', action: () => App.cutSelected() },
       { label: 'Kopyala', shortcut: 'Ctrl+C', action: () => App.copySelected() },
       { label: 'Dublikat', shortcut: 'Ctrl+D', action: () => App.duplicateSelected() },
+      ...(canDetach ? [{ label: 'Səsi ayır', action: () => App.detachAudio() }] : []),
       { sep: true },
       { label: 'Xüsusiyyətlər', action: () => App.showPage('props') },
       { label: 'Keçid əlavə et', action: () => App.showPage('transitions') },

@@ -66,8 +66,10 @@ const Media = (() => {
 
   /* Səs dalğası üçün piklər: saniyədə PEAKS_PER_SEC dəyər (0..1) */
   const PEAKS_PER_SEC = 50;
-  const MAX_DECODE_BYTES = 600 * 1024 * 1024;
-  const SCAN_RATE = 16; // ehtiyat yolda oxutma sürəti (Chromium maksimum 16×)
+  // Bütöv dekod yalnız kiçik/qısa fayllar üçün: uzun faylın PCM-i yaddaşı doldurur (1 saat stereo ≈ 1,3 GB)
+  const MAX_DECODE_BYTES = 400 * 1024 * 1024;
+  const MAX_DECODE_SEC = 15 * 60;
+  const SCAN_RATE = 4; // ehtiyat yolda oxutma sürəti: 4×-dən yuxarıda Chromium səsin bir hissəsini buraxır, dalğa boşluqlu çıxır
 
   function finishPeaks(m, peaks) {
     let max = 0; for (let i = 0; i < peaks.length; i++) if (peaks[i] > max) max = peaks[i];
@@ -80,7 +82,7 @@ const Media = (() => {
 
   /* 1-ci yol: faylı bütöv dekod et (sürətli, amma hər konteyner/kodek üçün işləmir) */
   async function peaksByDecode(m) {
-    if (m.size > MAX_DECODE_BYTES) return false;
+    if (m.size > MAX_DECODE_BYTES || (m.duration && m.duration > MAX_DECODE_SEC)) return false;
     try {
       const buf = await m.file.arrayBuffer();
       const octx = new OfflineAudioContext(1, 1, 44100);
@@ -106,57 +108,83 @@ const Media = (() => {
     }
   }
 
-  /* 2-ci yol: faylı səssiz audio elementi ilə sürətli oxudub pikləri topla.
-     Böyük MP4 və decodeAudioData-nın oxumadığı formatlar üçün. Dalğa tədricən görünür. */
+  /* 2-ci yol: faylı səssiz audio elementləri ilə sürətli oxudub pikləri topla.
+     Böyük (GB-lıq) MP4 və decodeAudioData-nın oxumadığı formatlar üçün. Fayl bir neçə
+     hissəyə bölünür, hissələr eyni anda oxunur; dalğa tədricən görünür.
+     Qeyd: 4×-dən yuxarı sürətdə Chromium səsin bir hissəsini buraxır (ölçülüb: 16× → 40%, 8× → 68%, 4× → 100%). */
+  const SCAN_PARALLEL = 4;
   let scanChain = Promise.resolve();
   function peaksByPlayback(m) {
     const run = () => new Promise(resolve => {
       if (!m.duration || !isFinite(m.duration) || !State.media.has(m.id)) { resolve(false); return; }
       let ctx;
       try { ctx = new (window.AudioContext || window.webkitAudioContext)(); } catch { resolve(false); return; }
-      const el = document.createElement('audio'); // video faylında da yalnız səs yolunu oxuyur
-      el.preload = 'auto'; el.preservesPitch = false; el.src = m.url;
       const count = Math.ceil(m.duration * PEAKS_PER_SEC);
       const peaks = new Float32Array(count);
       m.peaks = peaks; m.peaksPerSec = PEAKS_PER_SEC; m.peakMax = 1; // tədricən dolacaq
-      const src = ctx.createMediaElementSource(el);
-      const proc = ctx.createScriptProcessor(4096, 2, 1);
-      const gain = ctx.createGain(); gain.gain.value = 0;
-      src.connect(proc); proc.connect(gain); gain.connect(ctx.destination);
-      let tPrev = 0, lastDraw = 0, done = false, got = false;
-      const finish = ok => {
+      const nSeg = Math.max(1, Math.min(SCAN_PARALLEL, Math.floor(m.duration / 20)));
+      const segLen = m.duration / nSeg;
+      const workers = [];
+      let active = nSeg, done = false, got = false, lastDraw = 0, decodedCheck = null;
+      const finish = () => {
         if (done) return; done = true;
-        try { proc.disconnect(); src.disconnect(); gain.disconnect(); } catch {}
-        try { el.pause(); el.removeAttribute('src'); el.load(); } catch {}
+        clearTimeout(guard); clearTimeout(decodedCheck);
+        for (const w of workers) w.stop();
         ctx.close().catch(() => {});
-        if (ok && got) finishPeaks(m, peaks); else m.peaks = null;
-        resolve(ok && got);
+        if (got) finishPeaks(m, peaks); else m.peaks = null;
+        resolve(got);
       };
-      proc.onaudioprocess = ev => {
-        if (done) return;
-        const tNow = el.currentTime;
-        if (tNow <= tPrev) return; // dayanıb (bufer gözləyir)
-        const ib = ev.inputBuffer, n = ib.length, chans = ib.numberOfChannels;
-        const span = tNow - tPrev;
-        for (let ch = 0; ch < chans; ch++) {
-          const data = ib.getChannelData(ch);
-          for (let j = 0; j < n; j++) {
-            const a = data[j] < 0 ? -data[j] : data[j];
-            if (a === 0) continue;
-            const idx = Math.floor((tPrev + span * j / n) * PEAKS_PER_SEC);
-            if (idx >= 0 && idx < count && a > peaks[idx]) { peaks[idx] = a; got = true; }
+      const segDone = () => { if (--active <= 0) finish(); };
+      const guard = setTimeout(finish, (segLen / SCAN_RATE + 60) * 2000);
+      const redraw = () => { const now = performance.now(); if (now - lastDraw > 1500) { lastDraw = now; if (State.project) Timeline.render(); } };
+
+      function startWorker(from, to) {
+        const el = document.createElement('audio'); // video faylında da yalnız səs yolunu oxuyur
+        el.preload = 'auto'; el.preservesPitch = false; el.src = m.url;
+        const src = ctx.createMediaElementSource(el);
+        const proc = ctx.createScriptProcessor(4096, 2, 1);
+        const gain = ctx.createGain(); gain.gain.value = 0;
+        src.connect(proc); proc.connect(gain); gain.connect(ctx.destination);
+        let tPrev = from, stopped = false;
+        const stop = () => {
+          if (stopped) return; stopped = true;
+          try { proc.disconnect(); src.disconnect(); gain.disconnect(); } catch {}
+          try { el.pause(); el.removeAttribute('src'); el.load(); } catch {}
+        };
+        const end = () => { if (!stopped) { stop(); segDone(); } };
+        proc.onaudioprocess = ev => {
+          if (stopped) return;
+          const tNow = el.currentTime;
+          if (tNow <= tPrev) return; // hələ irəliləməyib (bufer gözləyir)
+          const ib = ev.inputBuffer, n = ib.length, chans = ib.numberOfChannels;
+          const span = tNow - tPrev;
+          for (let ch = 0; ch < chans; ch++) {
+            const data = ib.getChannelData(ch);
+            for (let j = 0; j < n; j++) {
+              const a = data[j] < 0 ? -data[j] : data[j];
+              if (a === 0) continue;
+              const idx = Math.floor((tPrev + span * j / n) * PEAKS_PER_SEC);
+              if (idx >= 0 && idx < count && a > peaks[idx]) { peaks[idx] = a; got = true; }
+            }
           }
-        }
-        tPrev = tNow;
-        const now = performance.now();
-        if (now - lastDraw > 1500) { lastDraw = now; if (State.project) Timeline.render(); }
-      };
-      el.addEventListener('ended', () => finish(true));
-      el.addEventListener('error', () => finish(false));
-      const guard = setTimeout(() => finish(true), (m.duration / SCAN_RATE + 30) * 1000 * 2);
-      el.addEventListener('ended', () => clearTimeout(guard));
-      el.playbackRate = SCAN_RATE;
-      el.play().catch(() => finish(false));
+          tPrev = tNow;
+          redraw();
+          if (tNow >= to) end();
+        };
+        const go = () => { el.playbackRate = SCAN_RATE; el.play().catch(end); };
+        el.addEventListener('ended', end);
+        el.addEventListener('error', end);
+        el.addEventListener('loadedmetadata', () => {
+          if (from > 0.05) { el.addEventListener('seeked', go, { once: true }); el.currentTime = from; } else go();
+        }, { once: true });
+        return { stop, el };
+      }
+      for (let i = 0; i < nSeg; i++) workers.push(startWorker(i * segLen, i === nSeg - 1 ? m.duration : (i + 1) * segLen));
+      // Səs yolu yoxdursa boş yerə gözləməyək: bir neçə saniyədən sonra dekod olunan bayt yoxdursa bitir
+      decodedCheck = setTimeout(() => {
+        const w = workers[0] && workers[0].el;
+        if (!got && w && 'webkitAudioDecodedByteCount' in w && w.webkitAudioDecodedByteCount === 0 && w.currentTime > 2) finish();
+      }, 8000);
     });
     const p = scanChain.then(run, run);
     scanChain = p.catch(() => {});
