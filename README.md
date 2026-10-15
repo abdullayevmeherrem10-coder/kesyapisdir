@@ -28,8 +28,8 @@ Windows-da **Başlat.cmd** faylına iki dəfə klikləmək kifayətdir (ilk dəf
 | Bölmə | İmkanlar |
 |---|---|
 | Layihə | 16:9, 9:16, 1:1, 4:3, 21:9; 24/25/30/60 fps; arxa fon rəngi; bulanıq fon; qapaq (üz şəkli) |
-| Media | Video, şəkil, audio idxalı (düymə, sürüklə-burax); kateqoriya və axtarışla "Layihə faylları"; hazır arxa fonlar; kamera, ekran (sistem səsi ilə) və mikrofon yazısı |
-| Zaman xətti | Çoxtrekli; sürüklə, kəs (trim), böl (Ctrl+B), kopyala/kəs/yapışdır (Ctrl+C/X/V), dublikat, qrup seçimi; səs dalğası video və audio kliplərdə; maqnit; miqyas; sağ klik menyuları; trekləri sırala/adlandır |
+| Media | Video, şəkil, audio idxalı (düymə, sürüklə-burax, bütöv qovluq); İdxal panelində axtarış və sıralama; kateqoriya və axtarışla "Layihə faylları"; hazır arxa fonlar; kamera, ekran (sistem səsi ilə) və mikrofon yazısı |
+| Zaman xətti | Çoxtrekli; sürüklə, kənarı çəkərək qısalt (canlı önizləmə və müddət ipucu ilə), böl (Ctrl+B), kopyala/kəs/yapışdır (Ctrl+C/X/V), dublikat, qrup seçimi; səs dalğası video və audio kliplərdə; seçilmiş klipdə səs xətti (səviyyə, aydınlanma/qaralma dairələri); klipə klik başlığı ora gətirir; siçanı izləyən ağ xətt; maqnit; miqyas; sağ klik menyuları; trekləri sırala/adlandır |
 | Keçidlər | 28 keçid, 4 kateqoriya (Əsas, Hərəkət, Silmə, Effektlər), canlı önizləmə, müddət tənzimi |
 | Video → Əsas | Ölçü (sabit nisbət), mövqe X/Y, fırlatma, 6 düzləndirmə düyməsi, sığdır/doldur, üfüqi çevirmə, şəffaflıq, qarışdırma rejimləri |
 | Video → Arxa fonu sil | Xroma açarı (yaşıl/mavi fon): rəng, pipet, həssaslıq, kənar yumşaqlığı |

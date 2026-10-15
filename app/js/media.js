@@ -1,7 +1,5 @@
 /* ===== Kəsyapışdır — media idxalı, kitabxana, miniatürlər ===== */
 const Media = (() => {
-  const grid = document.getElementById('media-grid');
-  const dropHint = document.getElementById('drop-hint');
 
   function typeOf(file) {
     const t = (file.type || '').toLowerCase();
@@ -201,6 +199,25 @@ const Media = (() => {
     if (State.project) Timeline.render();
   }
 
+  /* Sürüklənən qovluqları da aç: içindəki bütün media faylları (alt qovluqlar daxil).
+     Diqqət: webkitGetAsEntry drop hadisəsinin içində, sinxron çağırılmalıdır. */
+  function filesFromDrop(dt) {
+    const entries = (dt.items ? [...dt.items] : []).map(it => it.webkitGetAsEntry && it.webkitGetAsEntry()).filter(Boolean);
+    const plain = [...(dt.files || [])];
+    if (!entries.some(en => en.isDirectory)) return Promise.resolve(plain);
+    const out = [];
+    const readAll = dir => new Promise(res => {
+      const reader = dir.createReader(), acc = [];
+      const next = () => reader.readEntries(batch => { if (!batch.length) res(acc); else { acc.push(...batch); next(); } }, () => res(acc));
+      next();
+    });
+    const walk = async en => {
+      if (en.isFile) { const f = await new Promise(res => en.file(res, () => res(null))); if (f && typeOf(f)) out.push(f); }
+      else if (en.isDirectory) for (const c of await readAll(en)) await walk(c);
+    };
+    return (async () => { for (const en of entries) await walk(en); if (!out.length) App.toast('Qovluqda media faylı tapılmadı', true); return out; })();
+  }
+
   async function importFiles(files, opts = {}) {
     let added = 0;
     for (const f of files) {
@@ -257,7 +274,14 @@ const Media = (() => {
     image: '<svg class="ic"><use href="#i-image"/></svg>'
   };
 
-  function makeCard(m, { list = false } = {}) {
+  /* Uzun adı ortadan qısalt: "C20260831_6529.MP4" → "C20260...29.MP4" */
+  function shortName(n, max = 15) {
+    if (n.length <= max) return n;
+    const tail = 6;
+    return n.slice(0, max - tail - 3) + '...' + n.slice(-tail);
+  }
+
+  function makeCard(m, { list = false, compact = false } = {}) {
     const card = document.createElement('div');
     card.className = 'media-card' + (list ? ' row' : '');
     card.draggable = true;
@@ -269,7 +293,8 @@ ${m.type === 'image' ? `${m.width}×${m.height}` : fmtTime(m.duration)}`;
     if (m.thumb) thumb.style.backgroundImage = `url(${m.thumb})`; else thumb.innerHTML = ICONS[m.type];
     card.appendChild(thumb);
     if (m.type !== 'image') { const d = document.createElement('span'); d.className = 'dur'; d.textContent = fmtTime(m.duration); card.appendChild(d); }
-    const name = document.createElement('div'); name.className = 'name'; name.textContent = m.name; card.appendChild(name);
+    if (compact && m.type === 'video') { const k = document.createElement('span'); k.className = 'kind'; k.innerHTML = '<svg class="ic"><use href="#i-play-circle"/></svg>'; card.appendChild(k); }
+    const name = document.createElement('div'); name.className = 'name'; name.textContent = compact ? shortName(m.name) : m.name; card.appendChild(name);
     const used = State.project && State.project.tracks.some(t => t.clips.some(c => c.mediaId === m.id));
     if (used) { const u = document.createElement('span'); u.className = 'used'; u.innerHTML = '<svg class="ic"><use href="#i-check"/></svg>'; u.title = 'Zaman xəttində istifadə olunur'; card.appendChild(u); }
     const add = document.createElement('button'); add.className = 'add'; add.innerHTML = '<svg class="ic"><use href="#i-plus"/></svg>'; add.title = 'Zaman xəttinə əlavə et';
@@ -285,14 +310,52 @@ ${m.type === 'image' ? `${m.width}×${m.height}` : fmtTime(m.duration)}`;
   let filesCat = 'all', filesQuery = '';
   function setFilesFilter(cat, query) { if (cat != null) filesCat = cat; if (query != null) filesQuery = query; renderLibrary(); }
 
+  /* İdxal səhifəsi: axtarış və sıralama */
+  let libQuery = '', libSort = 'added';
+  const LIB_SORTS = [
+    ['added', 'Əlavə edilmə sırası'],
+    ['newest', 'Ən yenilər əvvəl'],
+    ['name', 'Ad (A–Z)'],
+    ['duration', 'Müddət (uzundan qısaya)'],
+    ['type', 'Növ (video, şəkil, səs)']
+  ];
+  function setLibFilter(query, sort) { if (query != null) libQuery = query; if (sort != null) libSort = sort; renderLibrary(); }
+  function libSortMenu(x, y) {
+    App.contextMenu(x, y, LIB_SORTS.map(([id, label]) => ({ label: (id === libSort ? '✓  ' : '    ') + label, action: () => setLibFilter(null, id) })));
+  }
+  function libItems(items) {
+    const q = libQuery.trim().toLowerCase();
+    let list = items.filter(m => !q || m.name.toLowerCase().includes(q));
+    const order = { video: 0, image: 1, audio: 2 };
+    if (libSort === 'newest') list = list.reverse();
+    else if (libSort === 'name') list.sort((a, b) => a.name.localeCompare(b.name, 'az', { numeric: true, sensitivity: 'base' }));
+    else if (libSort === 'duration') list.sort((a, b) => (b.duration || 0) - (a.duration || 0));
+    else if (libSort === 'type') list.sort((a, b) => order[a.type] - order[b.type]);
+    return list;
+  }
+
   function renderLibrary() {
     const items = [...State.media.values()];
     const byType = t => items.filter(m => m.type === t);
     // İdxal səhifəsi
+    // Boş vəziyyət ↔ kitabxana görünüşü
+    const has = items.length > 0;
+    for (const id of ['lib-bar', 'drop-zone']) { const el = document.getElementById(id); if (el) el.classList.toggle('hidden', !has); }
+    const emptyView = document.getElementById('import-empty'); if (emptyView) emptyView.classList.toggle('hidden', has);
     const grid = document.getElementById('media-grid');
-    const dropHint = document.getElementById('drop-hint');
-    if (grid) { grid.innerHTML = ''; for (const m of items) grid.appendChild(makeCard(m)); }
-    if (dropHint) dropHint.classList.toggle('compact', items.length > 0);
+    if (grid) {
+      const list = libItems(items);
+      grid.innerHTML = '';
+      for (const m of list) grid.appendChild(makeCard(m, { compact: true }));
+      const q = libQuery.trim();
+      const title = document.getElementById('lib-title');
+      if (title) { title.textContent = q ? `Axtarış: "${q}"` : 'Hamısı'; title.classList.toggle('hidden', !items.length); }
+      const empty = document.getElementById('lib-empty');
+      if (empty) {
+        empty.classList.toggle('hidden', list.length > 0);
+        empty.textContent = items.length ? 'Heç nə tapılmadı' : 'Faylları bura sürükləyin və ya «Əlavə et» düyməsini basın';
+      }
+    }
     // Səs səhifəsi
     const ag = document.getElementById('audio-grid');
     if (ag) { ag.innerHTML = ''; for (const m of byType('audio')) ag.appendChild(makeCard(m, { list: true })); }
@@ -310,5 +373,5 @@ ${m.type === 'image' ? `${m.width}×${m.height}` : fmtTime(m.duration)}`;
     }
   }
 
-  return { typeOf, fmtTime, probe, computePeaks, importFiles, removeMedia, addToTimeline, renderLibrary, setFilesFilter, ICONS };
+  return { typeOf, fmtTime, probe, computePeaks, importFiles, removeMedia, addToTimeline, renderLibrary, setFilesFilter, setLibFilter, libSortMenu, filesFromDrop, ICONS };
 })();

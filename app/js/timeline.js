@@ -2,8 +2,8 @@
 const Timeline = (() => {
   const $ = id => document.getElementById(id);
   const scroll = $('timeline-scroll'), content = $('timeline-content'), ruler = $('ruler');
-  const tracksEl = $('tracks'), headersEl = $('track-headers'), playheadEl = $('playhead');
-  const TRACK_H = { video: 84, audio: 50, text: 42 };
+  const tracksEl = $('tracks'), headersEl = $('track-headers'), playheadEl = $('playhead'), hoverEl = $('hoverline');
+  const TRACK_H = { video: 84, audio: 60, text: 42 };
   const ICON = n => `<svg class="ic"><use href="#i-${n}"/></svg>`;
   const TRACK_ICON = { video: ICON('film'), audio: ICON('music'), text: ICON('type') };
   const PAD_SEC = 15;
@@ -48,6 +48,8 @@ const Timeline = (() => {
   function renderClip(clip) {
     const el = document.createElement('div');
     el.className = `clip clip-${clip.type}` + (State.selection.includes(clip.id) ? ' selected' : '');
+    // Videodan ayrılmış səs: ayrıca görünüş (yaşılımtıl, dalğa aşağıdan yuxarı)
+    if (clip.type === 'audio' && State.media.get(clip.mediaId)?.type === 'video') el.classList.add('clip-detached');
     el.dataset.clipId = clip.id;
     positionClipEl(el, clip);
     const m = State.media.get(clip.mediaId);
@@ -56,13 +58,14 @@ const Timeline = (() => {
     const body = el.querySelector('.clip-body');
     if (m && m.thumb && clip.type !== 'audio') body.style.backgroundImage = `url(${m.thumb})`;
     // Səsi ayrılmış (səssiz) video klipdə dalğa göstərmə — səs artıq audio trekdədir
-    if (m && m.peaks && (clip.type === 'audio' || (clip.type === 'video' && clip.volume > 0))) {
+    if (m && m.peaks && (clip.type === 'audio' || (clip.type === 'video' && !clip.audioDetached))) {
       const wave = document.createElement('canvas');
       wave.className = 'clip-wave';
       el.appendChild(wave);
       el.classList.add('has-wave');
       drawWave(wave, clip, m);
     }
+    if (m && (clip.type === 'audio' || el.classList.contains('has-wave'))) el.appendChild(volUI(clip));
     if (!m && clip.type !== 'text') el.style.background = '#6b2d2d';
     if (clip.speed !== 1) {
       const sp = document.createElement('span'); sp.className = 'clip-speed'; sp.textContent = `${clip.speed}×`; el.appendChild(sp);
@@ -85,12 +88,15 @@ const Timeline = (() => {
     el.style.width = Math.max(4, t2x(clip.duration)) + 'px';
     const wave = el.querySelector('.clip-wave');
     if (wave) { const m = State.media.get(clip.mediaId); if (m && m.peaks) drawWave(wave, clip, m); }
+    const vu = el.querySelector('.vol-ui'); if (vu) updateVolUI(vu, clip);
   }
 
   /* Klipin görünən hissəsinə uyğun səs dalğasını çək */
   function drawWave(canvas, clip, m) {
     const widthPx = Math.max(4, Math.round(t2x(clip.duration)));
-    const h = clip.type === 'audio' ? (TRACK_H.audio - 6) : Math.round((TRACK_H.video - 6) * 0.4);
+    const detached = clip.type === 'audio' && m.type === 'video';
+    // detached: klip hündürlüyü − başlıq (18) − alt boşluq (3) − kənarlar
+    const h = detached ? (TRACK_H.audio - 8 - 24) : clip.type === 'audio' ? (TRACK_H.audio - 6) : Math.round((TRACK_H.video - 6) * 0.4);
     const w = Math.min(widthPx, 6000);
     if (canvas.width !== w) canvas.width = w;
     if (canvas.height !== h) canvas.height = h;
@@ -99,16 +105,73 @@ const Timeline = (() => {
     const pps = m.peaksPerSec, peaks = m.peaks;
     const segStart = clip.in, segLen = clip.duration * clip.speed;
     const perPx = segLen / w;
-    ctx.fillStyle = clip.type === 'audio' ? 'rgba(120,190,255,0.9)' : 'rgba(150,200,255,0.85)';
+    const bottomUp = detached || clip.type === 'video';
+    const vis = Math.min(1, Math.max(0, clip.volume ?? 1)); // səs azaldıqca dalğa da kiçilir
+    ctx.fillStyle = detached ? '#1b6457' : clip.type === 'audio' ? 'rgba(120,190,255,0.9)' : '#353c86';
     const mid = h / 2;
     for (let x = 0; x < w; x++) {
       const t0 = segStart + x * perPx;
       let i0 = Math.floor(t0 * pps), i1 = Math.max(i0 + 1, Math.ceil((t0 + perPx) * pps));
       let v = 0;
       for (let i = i0; i < i1 && i < peaks.length; i++) if (peaks[i] > v) v = peaks[i];
-      const bh = Math.max(1, v * h);
-      ctx.fillRect(x, mid - bh / 2, 1, bh);
+      v *= vis;
+      if (bottomUp) { const bh = Math.max(1, v * (h - 2)); ctx.fillRect(x, h - bh, 1, bh); } // aşağıdan yuxarı
+      else { const bh = Math.max(1, v * h); ctx.fillRect(x, mid - bh / 2, 1, bh); }
     }
+  }
+
+
+  /* ---- Səs xətti (Movavi kimi): seçilmiş klipin səs hissəsində ağ xətt + uclarda dairələr ----
+     Xətti yuxarı/aşağı çək → səs səviyyəsi; dairəni içəri çək → aydınlanma / qaralma */
+  const VOL_TOP = 8, VOL_SPAN = 88; // xəttin hündürlüyü (%): səs 1 → 8%, səs 0 → 96%
+  const SVG_NS = 'http://www.w3.org/2000/svg';
+  function volUI(clip) {
+    const svg = document.createElementNS(SVG_NS, 'svg');
+    svg.setAttribute('class', 'vol-ui');
+    svg.innerHTML = '<line class="vl vl-in"/><line class="vl vl-mid"/><line class="vl vl-out"/><line class="vl-hit"/>'
+      + '<circle class="vh vh-in" r="4.5"/><circle class="vh vh-out" r="4.5"/>';
+    updateVolUI(svg, clip);
+    return svg;
+  }
+  function updateVolUI(svg, clip) {
+    const d = Math.max(clip.duration, 1e-6);
+    const fi = clip.fadeIn || 0, fo = clip.fadeOut || 0;
+    const a = Math.min(100, fi / d * 100), b = Math.max(0, 100 - fo / d * 100);
+    const y = VOL_TOP + (1 - Math.min(1, Math.max(0, clip.volume))) * VOL_SPAN;
+    const q = sel => svg.querySelector(sel);
+    const line = (el, x1, y1, x2, y2) => { el.setAttribute('x1', x1); el.setAttribute('y1', y1); el.setAttribute('x2', x2); el.setAttribute('y2', y2); };
+    line(q('.vl-in'), '0%', '100%', a + '%', y + '%'); q('.vl-in').style.display = fi > 0 ? '' : 'none';
+    line(q('.vl-mid'), a + '%', y + '%', b + '%', y + '%');
+    line(q('.vl-hit'), a + '%', y + '%', b + '%', y + '%');
+    line(q('.vl-out'), b + '%', y + '%', '100%', '100%'); q('.vl-out').style.display = fo > 0 ? '' : 'none';
+    const ci = q('.vh-in'), co = q('.vh-out');
+    ci.style.setProperty('cx', fi > 0 ? a + '%' : '5px'); ci.style.setProperty('cy', y + '%');
+    co.style.setProperty('cx', fo > 0 ? b + '%' : 'calc(100% - 5px)'); co.style.setProperty('cy', y + '%');
+  }
+  function rerenderClip(clip) {
+    const old = content.querySelector(`[data-clip-id="${clip.id}"]`);
+    if (old) old.replaceWith(renderClip(clip));
+  }
+
+  /* Sürükləyərkən siçanın yanında kiçik ipucu */
+  let tipEl = null;
+  function showTip(e, text) {
+    if (!text) return;
+    if (!tipEl) { tipEl = document.createElement('div'); tipEl.className = 'tl-tip'; document.body.appendChild(tipEl); }
+    tipEl.textContent = text;
+    tipEl.style.left = (e.clientX + 14) + 'px';
+    tipEl.style.top = (e.clientY - 30) + 'px';
+    tipEl.classList.remove('hidden');
+  }
+  function hideTip() { if (tipEl) tipEl.classList.add('hidden'); }
+  function tipText(mode, clip, o) {
+    const f = s => Media.fmtTime(s, true);
+    if (mode === 'move') return `Başlanğıc ${f(clip.start)}`;
+    if (mode === 'trim-l' || mode === 'trim-r') { const d = clip.duration - o.duration; return `${f(clip.duration)}  (${d >= 0 ? '+' : '−'}${Math.abs(d).toFixed(2)} s)`; }
+    if (mode === 'volume') return clip.volume > 0 ? `Səs ${(20 * Math.log10(clip.volume)).toFixed(1)} dB` : 'Səssiz';
+    if (mode === 'fade-in') return `Aydınlanma ${clip.fadeIn.toFixed(2)} s`;
+    if (mode === 'fade-out') return `Qaralma ${clip.fadeOut.toFixed(2)} s`;
+    return '';
   }
 
   /* ---- Tam yenidən qurma ---- */
@@ -259,7 +322,7 @@ const Timeline = (() => {
     e.preventDefault();
     const id = clipEl.dataset.clipId;
     if (!State.selection.includes(id)) State.select([id]);
-    const canDetach = State.selectedClips().some(c => c.type === 'video' && c.volume > 0 && State.media.get(c.mediaId)?.type === 'video');
+    const canDetach = State.selectedClips().some(c => c.type === 'video' && !c.audioDetached && State.media.get(c.mediaId)?.type === 'video');
     App.contextMenu(e.clientX, e.clientY, [
       { label: 'Böl', shortcut: 'Ctrl+B', action: () => App.splitAtPlayhead() },
       { label: 'Kəs', shortcut: 'Ctrl+X', action: () => App.cutSelected() },
@@ -310,11 +373,14 @@ const Timeline = (() => {
     const { clip, track } = found;
     if (e.shiftKey) State.select([id], true);
     else if (!State.selection.includes(id)) State.select([id]);
-    const mode = e.target.classList.contains('clip-handle') ? (e.target.classList.contains('left') ? 'trim-l' : 'trim-r') : 'move';
+    const tc = e.target.classList;
+    const mode = tc.contains('vh-in') ? 'fade-in' : tc.contains('vh-out') ? 'fade-out' : tc.contains('vl-hit') ? 'volume'
+      : tc.contains('clip-handle') ? (tc.contains('left') ? 'trim-l' : 'trim-r') : 'move';
     const origs = new Map();
     for (const c of State.selectedClips()) origs.set(c.id, { start: c.start, trackId: c.trackId });
     drag = {
-      mode, id, startX: e.clientX, moved: false,
+      mode, id, startX: e.clientX, startY: e.clientY, moved: false,
+      volRect: /^(volume|fade)/.test(mode) ? clipEl.querySelector('.vol-ui').getBoundingClientRect() : null,
       orig: JSON.parse(JSON.stringify(clip)), origTrackId: track.id, origs,
       prevEnd: 0, nextStart: Infinity
     };
@@ -331,8 +397,10 @@ const Timeline = (() => {
     }
     if (!drag) return;
     if (!drag.moved) {
-      if (Math.abs(e.clientX - drag.startX) < 3) return;
+      if (Math.hypot(e.clientX - drag.startX, e.clientY - drag.startY) < 3) return;
       drag.moved = true;
+      if (/^(trim|fade)/.test(drag.mode)) document.body.classList.add('tl-drag-ew');
+      else if (drag.mode === 'volume') document.body.classList.add('tl-drag-ns');
       State.pushHistory();
       const el = content.querySelector(`[data-clip-id="${drag.id}"]`);
       el && el.classList.add('dragging');
@@ -406,8 +474,27 @@ const Timeline = (() => {
       clip.duration = nd;
       const el = content.querySelector(`[data-clip-id="${clip.id}"]`);
       el && positionClipEl(el, clip);
+    } else if (drag.mode === 'volume') {
+      const r = drag.volRect;
+      let v = State.clamp(1 - ((e.clientY - r.top) / r.height * 100 - VOL_TOP) / VOL_SPAN, 0, 1);
+      if (v < 0.005) v = 0;
+      clip.volume = Math.round(v * 1000) / 1000;
+      rerenderClip(clip);
+    } else if (drag.mode === 'fade-in' || drag.mode === 'fade-out') {
+      const r = drag.volRect;
+      const frac = drag.mode === 'fade-in' ? (e.clientX - r.left) / r.width : (r.right - e.clientX) / r.width;
+      const other = drag.mode === 'fade-in' ? clip.fadeOut : clip.fadeIn;
+      let f = State.clamp(frac * clip.duration, 0, Math.max(0, clip.duration - other));
+      f = f < 0.05 ? 0 : Math.round(f * 100) / 100;
+      if (drag.mode === 'fade-in') clip.fadeIn = f; else clip.fadeOut = f;
+      rerenderClip(clip);
     }
-    if (!Renderer.playing) Renderer.refresh();
+    showTip(e, tipText(drag.mode, clip, o));
+    if (Renderer.playing) return;
+    // Kənarı çəkəndə önizləmədə kəsilən yerin kadrı görünsün (narıncı başlıq yerində qalır)
+    if (drag.mode === 'trim-l') Renderer.previewAt(clip.start + 0.001);
+    else if (drag.mode === 'trim-r') Renderer.previewAt(Math.max(clip.start, clip.start + clip.duration - 1 / (State.project.fps || 30)));
+    else Renderer.refresh();
   }
 
   function onPointerUp(e) {
@@ -422,9 +509,14 @@ const Timeline = (() => {
       return;
     }
     if (!drag) return;
-    const moved = drag.moved;
+    hideTip();
+    Renderer.endPreview();
+    document.body.classList.remove('tl-drag-ew', 'tl-drag-ns');
+    const moved = drag.moved, mode = drag.mode;
     const found = State.findClip(drag.id);
     drag = null;
+    // Klipə klik (sürükləmədən): narıncı başlıq klik edilən yerə gəlsin
+    if (!moved && mode === 'move' && e.button === 0) Renderer.seek(timeFromEvent(e));
     if (moved) {
       if (found) State.sortTrack(found.track);
       for (const t of State.project.tracks) State.sortTrack(t);
@@ -490,7 +582,7 @@ const Timeline = (() => {
     if (mediaId) { Media.addToTimeline(mediaId, t, trackId); return; }
     if (e.dataTransfer.files && e.dataTransfer.files.length) {
       const before = new Set(State.media.keys());
-      await Media.importFiles([...e.dataTransfer.files]);
+      await Media.importFiles(await Media.filesFromDrop(e.dataTransfer));
       let at = t;
       for (const id of State.media.keys()) if (!before.has(id)) { Media.addToTimeline(id, at, trackId); at = State.duration(); }
     }
@@ -539,6 +631,15 @@ const Timeline = (() => {
     scroll.addEventListener('dragleave', onDragLeave);
     scroll.addEventListener('drop', onDrop);
     scroll.addEventListener('wheel', onWheel, { passive: false });
+    // Ağ xətt siçanı izləyir (seçmir); narıncı başlıq son seçilən yerdə qalır
+    scroll.addEventListener('pointermove', e => {
+      if (scrubbing) { hoverEl.classList.add('hidden'); return; }
+      const x = e.clientX - content.getBoundingClientRect().left;
+      if (x < 0) { hoverEl.classList.add('hidden'); return; }
+      hoverEl.style.left = x + 'px';
+      hoverEl.classList.remove('hidden');
+    });
+    scroll.addEventListener('pointerleave', () => hoverEl.classList.add('hidden'));
     scroll.addEventListener('scroll', () => { headersEl.style.transform = `translateY(${-scroll.scrollTop}px)`; });
     $('tl-zoom').addEventListener('input', e => setZoom(+e.target.value));
     $('tl-snap').addEventListener('click', () => { snap = !snap; $('tl-snap').classList.toggle('on', snap); });

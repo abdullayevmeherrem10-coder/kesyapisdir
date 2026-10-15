@@ -60,6 +60,8 @@
   <symbol id="i-help" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3M12 17h.01"/></symbol>
   <symbol id="i-check" viewBox="0 0 24 24"><path d="M20 6L9 17l-5-5"/></symbol>
   <symbol id="i-search" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/></symbol>
+  <symbol id="i-sort" viewBox="0 0 24 24"><path d="M3 6h11M3 12h8M3 18h5M18 5v14M15 16l3 3 3-3"/></symbol>
+  <symbol id="i-play-circle" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9.5"/><path d="M10 8.5l5.5 3.5-5.5 3.5z" fill="currentColor" stroke="none"/></symbol>
   <symbol id="i-speed" viewBox="0 0 24 24"><path d="M12 2a10 10 0 0 0-7.07 17.07M12 2a10 10 0 0 1 7.07 17.07M12 12l4-4"/><circle cx="12" cy="12" r="1.5"/></symbol>
   <symbol id="i-fit" viewBox="0 0 24 24"><path d="M3 9V5a2 2 0 0 1 2-2h4M15 3h4a2 2 0 0 1 2 2v4M21 15v4a2 2 0 0 1-2 2h-4M9 21H5a2 2 0 0 1-2-2v-4M8 12h8"/></symbol>
   <symbol id="i-clock" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></symbol>
@@ -109,17 +111,32 @@
         <button class="subtab" data-sub="import-bg">Arxa fonlar</button>
       </div>
       <div class="subpage active" id="sub-import-all">
-        <div class="drop-zone" id="drop-zone">
-          <div class="drop-inner" id="drop-hint">
+        <!-- Boş vəziyyət: hələ fayl yoxdur -->
+        <div class="import-empty" id="import-empty">
+          <div class="drop-big" id="drop-big">
             <p>Faylları və ya qovluqları bura sürükləyin</p>
-            <button class="btn primary" id="btn-import">Fayl əlavə et</button>
+            <div class="split-btn">
+              <button class="btn primary split-main" id="btn-import-empty">Faylları əlavə et</button>
+              <button class="btn primary split-arrow" id="btn-import-more" title="Fayl və ya qovluq"><svg class="ic"><use href="#i-chevron"/></svg></button>
+            </div>
           </div>
-          <div class="media-grid" id="media-grid"></div>
+          <div class="record-row">
+            <button class="record-card" data-rec="camera"><svg class="ic"><use href="#i-camera"/></svg><span>Video<br>yaz</span></button>
+            <button class="record-card" data-rec="screen"><svg class="ic"><use href="#i-monitor"/></svg><span>Ekran<br>yazısı</span></button>
+            <button class="record-card" data-rec="mic"><svg class="ic"><use href="#i-mic"/></svg><span>Səs<br>yaz</span></button>
+          </div>
         </div>
-        <div class="record-row">
-          <button class="record-card" data-rec="camera"><svg class="ic"><use href="#i-camera"/></svg><span>Video<br>yaz</span></button>
-          <button class="record-card" data-rec="screen"><svg class="ic"><use href="#i-monitor"/></svg><span>Ekran<br>yazısı</span></button>
-          <button class="record-card" data-rec="mic"><svg class="ic"><use href="#i-mic"/></svg><span>Səs<br>yaz</span></button>
+        <!-- Fayllar var: axtarış, sıralama, şəbəkə -->
+        <div class="lib-bar hidden" id="lib-bar">
+          <label class="search lib-search"><svg class="ic"><use href="#i-search"/></svg><input id="lib-search" placeholder="Axtar"></label>
+          <button class="tbtn lib-sort" id="lib-sort" title="Sırala"><svg class="ic"><use href="#i-sort"/></svg></button>
+          <span class="spacer"></span>
+          <button class="btn lib-add" id="btn-import" title="Fayl əlavə et"><svg class="ic"><use href="#i-plus"/></svg><span>Əlavə et</span></button>
+        </div>
+        <div class="lib-body hidden" id="drop-zone">
+          <h4 class="group-title" id="lib-title">Hamısı</h4>
+          <div class="media-grid lib-grid" id="media-grid"></div>
+          <p class="lib-empty" id="lib-empty">Faylları bura sürükləyin və ya «Əlavə et» düyməsini basın</p>
         </div>
       </div>
       <div class="subpage" id="sub-import-files">
@@ -270,6 +287,7 @@
         <div class="ruler" id="ruler"></div>
         <div class="tracks" id="tracks"></div>
         <div class="playhead" id="playhead"><div class="playhead-head"></div></div>
+        <div class="hoverline hidden" id="hoverline"></div>
       </div>
     </div>
     <div class="meter" id="meter">
@@ -410,6 +428,7 @@
 <div id="toast" class="toast hidden"></div>
 
 <input type="file" id="file-import" multiple accept="video/*,audio/*,image/*" hidden>
+<input type="file" id="file-import-folder" webkitdirectory multiple hidden>
 <input type="file" id="file-import-audio" multiple accept="audio/*" hidden>
 <input type="file" id="file-cover" accept="image/*" hidden>
 <input type="file" id="file-project" accept=".ksy,application/json" hidden>

@@ -71,7 +71,7 @@ const Renderer = (() => {
     if (!m) return null;
     if (m.type === 'image') {
       const img = new Image();
-      img.onload = () => { if (!playing) draw(State.playhead); };
+      img.onload = () => { if (!playing) draw(previewT ?? State.playhead); };
       img.src = m.url;
       e = { el: img, type: 'image', mediaId: m.id };
     } else {
@@ -80,8 +80,8 @@ const Renderer = (() => {
       el.preload = 'auto';
       el.playsInline = true;
       el.src = m.url;
-      el.addEventListener('seeked', () => { if (!playing) draw(State.playhead); });
-      el.addEventListener('loadeddata', () => { if (!playing) draw(State.playhead); });
+      el.addEventListener('seeked', () => { if (!playing) draw(previewT ?? State.playhead); });
+      el.addEventListener('loadeddata', () => { if (!playing) draw(previewT ?? State.playhead); });
       e = { el, type: m.type, mediaId: m.id, gain: null, src: null };
       if (audioCtx) attachAudio(e);
     }
@@ -488,6 +488,10 @@ const Renderer = (() => {
     else { syncMedia(t, false); draw(t); }
     hooks.onTime && hooks.onTime(t);
   }
+  /* Kəsmə zamanı kənar kadrını göstər — oynatma başlığını (State.playhead) tərpətmədən */
+  let previewT = null;
+  function previewAt(t) { if (playing) return; previewT = t; cleanupElements(); syncMedia(t, false); draw(t); }
+  function endPreview() { if (previewT == null) return; previewT = null; refresh(); }
   function refresh() {
     cleanupElements();
     if (!playing) { syncMedia(State.playhead, false); draw(State.playhead); }
@@ -496,7 +500,7 @@ const Renderer = (() => {
   return {
     canvas, hooks,
     ensureAudio, getAudioStream, setMonitor, getLevels, get monitorOn() { return monitorOn; },
-    play, pause, toggle, seek, refresh, draw, renderTo, fitSize,
+    play, pause, toggle, seek, refresh, previewAt, endPreview, draw, renderTo, fitSize,
     get playing() { return playing; },
     get exporting() { return exporting; }, set exporting(v) { exporting = v; },
     filterString, fadeFactor, transitionOf

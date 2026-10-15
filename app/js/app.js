@@ -300,7 +300,7 @@ const App = (() => {
     const ids = [];
     State.mutate(() => {
       for (const c of clips) {
-        if (c.volume === 0) continue; // artıq səssizdir / ayrılıb
+        if (c.audioDetached) continue; // artıq ayrılıb
         const a = State.makeClip('audio', null, c.start, { mediaId: c.mediaId, duration: c.duration, srcDuration: c.srcDuration });
         a.in = c.in; a.speed = c.speed; a.volume = c.volume; a.fadeIn = c.fadeIn; a.fadeOut = c.fadeOut;
         a.normalize = !!c.normalize; a.preservesPitch = c.preservesPitch !== false;
@@ -308,6 +308,7 @@ const App = (() => {
         State.addClip(a, track.id);
         ids.push(a.id);
         c.volume = 0;
+        c.audioDetached = true;
       }
     });
     if (ids.length) { State.select(ids); toast(ids.length > 1 ? `${ids.length} klipin səsi ayrıldı` : 'Səs ayrıca audio klipə çıxarıldı'); }
@@ -696,7 +697,23 @@ const App = (() => {
     $('btn-import-audio').addEventListener('click', () => $('file-import-audio').click());
     $('btn-rec-mic').addEventListener('click', () => Recorder.open('mic'));
     $('tl-record').addEventListener('click', () => Recorder.open('mic'));
+    $('btn-import-empty').addEventListener('click', () => $('file-import').click());
+    $('btn-import-more').addEventListener('click', e => {
+      const r = e.currentTarget.getBoundingClientRect();
+      contextMenu(r.left - 120, r.bottom + 4, [
+        { label: 'Faylları əlavə et', action: () => $('file-import').click() },
+        { label: 'Qovluq əlavə et', action: () => $('file-import-folder').click() }
+      ]);
+    });
+    $('file-import-folder').addEventListener('change', async e => {
+      const files = [...e.target.files].filter(f => Media.typeOf(f));
+      e.target.value = '';
+      if (!files.length) { toast('Qovluqda media faylı tapılmadı', true); return; }
+      await Media.importFiles(files);
+    });
     for (const b of document.querySelectorAll('.record-card')) b.addEventListener('click', () => Recorder.open(b.dataset.rec));
+    $('lib-search').addEventListener('input', e => Media.setLibFilter(e.target.value, null));
+    $('lib-sort').addEventListener('click', e => { const r = e.currentTarget.getBoundingClientRect(); Media.libSortMenu(r.left, r.bottom + 4); });
     $('btn-add-text').addEventListener('click', () => addTextClip());
     $('files-search').addEventListener('input', e => Media.setFilesFilter(null, e.target.value));
     for (const b of document.querySelectorAll('#sub-import-files .cat')) b.addEventListener('click', () => { for (const x of b.parentElement.children) x.classList.toggle('active', x === b); Media.setFilesFilter(b.dataset.cat, null); });
@@ -708,12 +725,13 @@ const App = (() => {
     $('file-missing').addEventListener('change', async e => { await relinkFiles([...e.target.files]); e.target.value = ''; });
 
     // Sürüklə-burax
-    const dz = $('drop-zone');
     window.addEventListener('dragover', e => { if (e.dataTransfer.types.includes('Files')) e.preventDefault(); });
-    window.addEventListener('drop', e => { if (e.dataTransfer.types.includes('Files') && !e.target.closest('#timeline-scroll')) { e.preventDefault(); Media.importFiles([...e.dataTransfer.files]); } });
-    dz.addEventListener('dragover', e => { e.preventDefault(); dz.classList.add('over'); });
-    dz.addEventListener('dragleave', () => dz.classList.remove('over'));
-    dz.addEventListener('drop', () => dz.classList.remove('over'));
+    window.addEventListener('drop', async e => { if (e.dataTransfer.types.includes('Files') && !e.target.closest('#timeline-scroll')) { e.preventDefault(); Media.importFiles(await Media.filesFromDrop(e.dataTransfer)); } });
+    for (const dz of [$('drop-zone'), $('drop-big')]) {
+      dz.addEventListener('dragover', e => { e.preventDefault(); dz.classList.add('over'); });
+      dz.addEventListener('dragleave', () => dz.classList.remove('over'));
+      dz.addEventListener('drop', () => dz.classList.remove('over'));
+    }
 
     // Önizləmə
     $('btn-play').addEventListener('click', () => Renderer.toggle());

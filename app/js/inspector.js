@@ -318,7 +318,7 @@ const Inspector = (() => {
     slider(s, 'Aydınlanma', () => clip.fadeIn, v => { clip.fadeIn = Math.min(v, half); }, 0, Math.min(10, half), 0.1, { def: 0, unit: 's', fmt: v => round(v, 1) });
     slider(s, 'Qaralma', () => clip.fadeOut, v => { clip.fadeOut = Math.min(v, half); }, 0, Math.min(10, half), 0.1, { def: 0, unit: 's', fmt: v => round(v, 1) });
     const audioBtns = [{ icon: clip.volume === 0 ? 'volume' : 'mute', label: clip.volume === 0 ? 'Səsi aç' : 'Səssiz et', onClick: () => mut(() => { clip.volume = clip.volume === 0 ? 1 : 0; }) }];
-    if (clip.type === 'video' && m && m.type === 'video') audioBtns.push({ icon: 'music', label: 'Səsi ayır', title: 'Səsi ayrıca audio klipə çıxar (video səssiz qalır)', onClick: () => App.detachAudio() });
+    if (clip.type === 'video' && m && m.type === 'video' && !clip.audioDetached) audioBtns.push({ icon: 'music', label: 'Səsi ayır', title: 'Səsi ayrıca audio klipə çıxar (video səssiz qalır)', onClick: () => App.detachAudio() });
     buttons(s, audioBtns, 'btn-row');
     const n = section(body, 'Səsi normallaşdır', { enabled: clip.normalize, onEnable: v => mut(() => { clip.normalize = v; }) });
     n.appendChild(h('p', 'hint', m && m.peakMax ? `Klipin səsi standart səviyyəyə qaldırılır (pik: ${round(dbOf(m.peakMax), 1)} dB → -1 dB).` : 'Səs analizi hələ hazır deyil və ya klipdə səs yoxdur.'));
