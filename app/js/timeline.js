@@ -3,7 +3,8 @@ const Timeline = (() => {
   const $ = id => document.getElementById(id);
   const scroll = $('timeline-scroll'), content = $('timeline-content'), ruler = $('ruler');
   const tracksEl = $('tracks'), headersEl = $('track-headers'), playheadEl = $('playhead'), hoverEl = $('hoverline');
-  const TRACK_H = { video: 84, audio: 60, text: 42 };
+  const TRACK_H = { video: 96, audio: 60, text: 42 };
+  const WAVE_FRAC = 0.48; // video klipdə dalğa zolağının payı (style.css ilə eyni olmalıdır)
   const ICON = n => `<svg class="ic"><use href="#i-${n}"/></svg>`;
   const TRACK_ICON = { video: ICON('film'), audio: ICON('music'), text: ICON('type') };
   const PAD_SEC = 15;
@@ -93,11 +94,13 @@ const Timeline = (() => {
 
   /* Klipin görünən hissəsinə uyğun səs dalğasını çək */
   function drawWave(canvas, clip, m) {
-    const widthPx = Math.max(4, Math.round(t2x(clip.duration)));
     const detached = clip.type === 'audio' && m.type === 'video';
+    // Ekran böyütməsi (125%, 150%) olan noutbuklarda da kəskin görünsün
+    const dpr = Math.max(1, window.devicePixelRatio || 1);
+    const cssW = Math.max(4, Math.round(t2x(clip.duration)) - (detached ? 6 : 0));
     // detached: klip hündürlüyü − başlıq (18) − alt boşluq (3) − kənarlar
-    const h = detached ? (TRACK_H.audio - 8 - 24) : clip.type === 'audio' ? (TRACK_H.audio - 6) : Math.round((TRACK_H.video - 6) * 0.4);
-    const w = Math.min(widthPx, 6000);
+    const cssH = detached ? (TRACK_H.audio - 8 - 24) : clip.type === 'audio' ? (TRACK_H.audio - 6) : Math.round((TRACK_H.video - 8) * WAVE_FRAC);
+    const w = Math.min(Math.round(cssW * dpr), 12000), h = Math.max(4, Math.round(cssH * dpr));
     if (canvas.width !== w) canvas.width = w;
     if (canvas.height !== h) canvas.height = h;
     const ctx = canvas.getContext('2d');
@@ -107,16 +110,20 @@ const Timeline = (() => {
     const perPx = segLen / w;
     const bottomUp = detached || clip.type === 'video';
     const vis = Math.min(1, Math.max(0, clip.volume ?? 1)); // səs azaldıqca dalğa da kiçilir
-    ctx.fillStyle = detached ? '#1b6457' : clip.type === 'audio' ? 'rgba(120,190,255,0.9)' : '#353c86';
-    const mid = h / 2;
-    for (let x = 0; x < w; x++) {
+    ctx.fillStyle = detached ? '#17594d' : clip.type === 'audio' ? 'rgba(120,190,255,0.9)' : '#2c3274';
+    // Movavi kimi ayrı-ayrı çubuqlar: hər 2 CSS pikseldə 1 piksel enində
+    const pxCss = w / cssW;
+    const step = Math.max(1, Math.round(2 * pxCss)), barW = Math.max(1, Math.round(pxCss));
+    const pad = bottomUp ? Math.round(2 * pxCss) : 0;
+    for (let x = 0; x < w; x += step) {
       const t0 = segStart + x * perPx;
-      let i0 = Math.floor(t0 * pps), i1 = Math.max(i0 + 1, Math.ceil((t0 + perPx) * pps));
+      const i0 = Math.floor(t0 * pps), i1 = Math.max(i0 + 1, Math.ceil((t0 + step * perPx) * pps));
       let v = 0;
       for (let i = i0; i < i1 && i < peaks.length; i++) if (peaks[i] > v) v = peaks[i];
-      v *= vis;
-      if (bottomUp) { const bh = Math.max(1, v * (h - 2)); ctx.fillRect(x, h - bh, 1, bh); } // aşağıdan yuxarı
-      else { const bh = Math.max(1, v * h); ctx.fillRect(x, mid - bh / 2, 1, bh); }
+      // Kvadrat kök miqyası: sakit danışıq da aydın görünsün (xətti miqyasda çox qısa qalırdı)
+      v = Math.sqrt(v) * vis;
+      if (bottomUp) { const bh = Math.max(barW, v * (h - pad)); ctx.fillRect(x, h - bh, barW, bh); } // aşağıdan yuxarı
+      else { const bh = Math.max(barW, v * h); ctx.fillRect(x, (h - bh) / 2, barW, bh); }
     }
   }
 

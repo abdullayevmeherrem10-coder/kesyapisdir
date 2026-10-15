@@ -337,14 +337,14 @@ textarea.text-content { width: 100%; min-height: 80px; resize: vertical; }
 .clip.selected { border-color: #fff; box-shadow: 0 0 0 1px #fff inset; }
 .clip.dragging { opacity: .85; cursor: grabbing; z-index: 3; }
 .clip-body { position: absolute; left: 0; right: 0; top: 18px; bottom: 0; background-repeat: repeat-x; background-size: auto 100%; }
-.clip-video .clip-body { bottom: 40%; }
+.clip-video .clip-body { bottom: 48%; }
 .clip-audio .clip-body { top: 0; background-image: repeating-linear-gradient(90deg, rgba(255,255,255,.14) 0 2px, transparent 2px 5px); background-size: auto 60%; background-position: 0 50%; }
 .clip-text .clip-body { background: rgba(0,0,0,.15); }
 .clip-audio .clip-label { left: 6px; right: auto; max-width: calc(100% - 12px); background: rgba(0,0,0,.45); border-radius: 3px; padding: 0 5px; z-index: 1; }
 .clip-label { position: absolute; left: 7px; top: 2px; right: 7px; font-size: 11px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; text-shadow: 0 1px 2px rgba(0,0,0,.8); pointer-events: none; }
 .clip-wave { position: absolute; left: 0; right: 0; bottom: 0; width: 100%; pointer-events: none; }
 /* Bitişik səs: kadrların altında ayırıcı xətt, dalğa aşağıdan yuxarı */
-.clip-video .clip-wave { height: 40%; background: transparent; border-top: 2px solid rgba(24,28,78,.6); }
+.clip-video .clip-wave { height: 48%; box-sizing: border-box; background: rgba(20,24,70,.08); border-top: 2px solid rgba(24,28,78,.6); }
 .clip-video .clip-label { color: #161b4a; text-shadow: none; }
 .clip-audio .clip-wave { top: 0; height: 100%; }
 .clip-audio.has-wave .clip-body { background-image: none; }
@@ -366,7 +366,7 @@ textarea.text-content { width: 100%; min-height: 80px; resize: vertical; }
 /* Səs xətti (yalnız seçilmiş klipdə) */
 .vol-ui { position: absolute; left: 0; width: 100%; overflow: visible; pointer-events: none; z-index: 4; }
 .clip:not(.selected) .vol-ui { display: none; }
-.clip-video .vol-ui { bottom: 0; height: 40%; }
+.clip-video .vol-ui { bottom: 0; height: 48%; }
 .clip-audio .vol-ui { top: 18px; height: calc(100% - 20px); }
 .clip-detached .vol-ui { top: 18px; left: 3px; width: calc(100% - 6px); height: calc(100% - 21px); }
 .vol-ui .vl { stroke: #fff; stroke-width: 1.5; }
